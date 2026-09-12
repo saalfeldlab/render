@@ -70,9 +70,13 @@ import mpicbg.trakem2.util.Downsampler;
 
 /**
  * Render a patch.
+ * <p>
+ * This is deprecated in favor of the methods in org.janelia.render.client.newsolver.solvers.intensity.
+ * Please use the TileRenderer class instead.
  *
  * @author Stephan Saalfeld saalfelds@janelia.hhmi.org
  */
+@Deprecated(since = "2026-07-29", forRemoval = true)
 public class Render
 {
 	private Render() {}
@@ -214,8 +218,7 @@ public class Render
 
 		/* estimate average scale and generate downsampled source */
 		final int width = patch.getWidth(), height = patch.getHeight();
-		// TODO: the last parameter is an integer division; should this be a float dvision instead?
-		final double s = sampleAverageScale( ctl, width, height, width / meshResolution );
+		final double s = sampleAverageScale(ctl, width, height, (double) width / meshResolution );
 		final int mipmapLevel = bestMipmapLevel( s );
 		final ImageProcessor ipMipmap = Downsampler.downsampleImageProcessor( impOriginal.ip, mipmapLevel );
 

@@ -1,0 +1,872 @@
+package org.janelia.render.client.spark.multisem;
+
+import com.beust.jcommander.ParametersDelegate;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
+import mpicbg.trakem2.transform.AffineModel2D;
+
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.Function;
+import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.ConnectedTileClusterSummaryForStack;
+import org.janelia.alignment.match.MatchCollectionId;
+import org.janelia.alignment.match.parameters.MatchRunParameters;
+import org.janelia.alignment.match.stage.StageMatcher;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackWithZValues;
+import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.ClusterCountClient;
+import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.multisem.MFOVAsTileStackClient;
+import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.LayerAsTileParameters;
+import org.janelia.render.client.parameter.LayerAsTileStackLists;
+import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.TileClusterParameters;
+import org.janelia.render.client.parameter.TileRenderParameters;
+import org.janelia.render.client.spark.LogUtilities;
+import org.janelia.render.client.spark.match.MultiStagePointMatchClient;
+import org.janelia.render.client.spark.newsolver.DistributedAffineBlockSolverClient;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import jakarta.annotation.Nonnull;
+
+/**
+ * Spark client for ...
+ */
+public class LayerAsTileClient
+        implements Serializable, AlignmentPipelineStep {
+
+    public static class Parameters extends CommandLineParameters {
+        @ParametersDelegate
+        public MultiProjectParameters multiProject = new MultiProjectParameters();
+
+        @ParametersDelegate
+        public LayerAsTileParameters layerAsTile = new LayerAsTileParameters();
+
+        public Parameters() {
+        }
+
+        public Parameters(final MultiProjectParameters multiProject,
+                          final LayerAsTileParameters layerAsTile) {
+            this.multiProject = multiProject;
+            this.layerAsTile = layerAsTile;
+        }
+    }
+
+    /** Run the client with command line parameters. */
+    public static void main(final String[] args) {
+        final ClientRunner clientRunner = new ClientRunner(args) {
+            @Override
+            public void runClient(final String[] args) throws Exception {
+                final Parameters parameters = new Parameters();
+                parameters.parse(args);
+                final LayerAsTileClient client = new LayerAsTileClient();
+                client.createContextAndRun(parameters);
+            }
+        };
+        clientRunner.run();
+    }
+
+    /** Empty constructor required for alignment pipeline steps. */
+    public LayerAsTileClient() {
+    }
+
+    /** Create a spark context and run the client with the specified parameters. */
+    public void createContextAndRun(final Parameters clientParameters) throws IOException {
+        final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
+        try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
+            LOG.info("run: appId is {}", sparkContext.getConf().getAppId());
+            run(sparkContext, clientParameters);
+        }
+    }
+
+    /** Validates the specified pipeline parameters are sufficient. */
+    @Override
+    public void validatePipelineParameters(final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException {
+        AlignmentPipelineParameters.validateRequiredElementExists("layerAsTile",
+                                                                  pipelineParameters.getLayerAsTile());
+    }
+
+    /** Run the client as part of an alignment pipeline. */
+    public void runPipelineStep(final JavaSparkContext sparkContext,
+                                final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException, IOException {
+        final Parameters clientParameters = new Parameters();
+        clientParameters.multiProject = pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
+        clientParameters.layerAsTile = pipelineParameters.getLayerAsTile();
+        run(sparkContext, clientParameters);
+    }
+
+    @Override
+    public AlignmentPipelineStepId getDefaultStepId() {
+        return AlignmentPipelineStepId.RENDER_TILES;
+    }
+
+    private void run(final JavaSparkContext sparkContext,
+                     final Parameters clientParameters)
+            throws IllegalArgumentException, IOException {
+
+        LOG.info("run: entry, clientParameters={}", clientParameters);
+
+        final String baseDataUrl = clientParameters.multiProject.getBaseDataUrl();
+
+        final LayerAsTileStackLists layerAsTileStackLists = new LayerAsTileStackLists(baseDataUrl,
+                                                                                      clientParameters.multiProject,
+                                                                                      clientParameters.layerAsTile);
+        buildDynamicLayerAsTileStacks(sparkContext, layerAsTileStackLists);
+
+        buildRenderedLayerAsTileStacks(sparkContext, layerAsTileStackLists);
+
+        generateLayerAsTileMatches(sparkContext, layerAsTileStackLists);
+
+        alignRenderedLayerAsTileStacks(sparkContext, layerAsTileStackLists);
+
+        buildAlign3DSfovStacks(sparkContext, layerAsTileStackLists);
+
+        LOG.info("run: exit");
+    }
+
+    private static void buildDynamicLayerAsTileStacks(final JavaSparkContext sparkContext,
+                                                      final LayerAsTileStackLists layerAsTileStackLists) {
+
+        final String baseDataUrl = layerAsTileStackLists.getBaseDataUrl();
+        final LayerAsTileParameters layerAsTile = layerAsTileStackLists.getLayerAsTile();
+        final double layerRenderScale = layerAsTile.getLayerRenderScale();
+        final String dynamicLayerStackSuffix = layerAsTile.getDynamicLayerStackSuffix();
+
+        final List<StackWithZValues> align2DSfovStacksWithAllZ = layerAsTileStackLists.getAlign2DSfovStacksWithAllZ();
+
+        final int parallelism = Math.min(MFOVAsTileClient.MAX_PARTITIONS_FOR_ONE_WEB_SERVER, align2DSfovStacksWithAllZ.size());
+
+        LOG.info("buildDynamicLayerAsTileStacks: entry, distributing build of {} stack(s) with parallelism {} (defaultParallelism={})",
+                 align2DSfovStacksWithAllZ.size(), parallelism, sparkContext.defaultParallelism());
+
+        final JavaRDD<StackWithZValues> rddAlign2DSfovStacks = sparkContext.parallelize(align2DSfovStacksWithAllZ,
+                                                                                        parallelism);
+
+        final Function<StackWithZValues, StackId> buildLayerStackFunction = stackWithAllZ -> {
+
+            StackId builtStackId = null;
+
+            LogUtilities.setupExecutorLog4j(stackWithAllZ.getStackId().toDevString());
+
+            final StackId align2DStackId = stackWithAllZ.getStackId();
+            final StackId dynamicLayerAsTileStackId = align2DStackId.withStackSuffix(dynamicLayerStackSuffix);
+
+            LOG.info("buildLayerStackFunction: entry, prealignedStackId={}, dynamicLayerAsTileStackId={}",
+                     align2DStackId.toDevString(), dynamicLayerAsTileStackId.toDevString());
+
+            if (layerAsTileStackLists.isExistingStack(dynamicLayerAsTileStackId)) {
+                LOG.info("buildLayerStackFunction: skipping build of {} because it already exists",
+                         dynamicLayerAsTileStackId.toDevString());
+            } else {
+                final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
+                                                                         align2DStackId.getOwner(),
+                                                                         align2DStackId.getProject());
+
+                builtStackId = MFOVAsTileStackClient.buildOneXAsTileStack(stackWithAllZ,
+                                                                          dataClient,
+                                                                          layerRenderScale,
+                                                                          dynamicLayerStackSuffix,
+                                                                          false);
+            }
+
+            LOG.info("buildLayerStackFunction: exit, prealignedStackId={}, dynamicLayerAsTileStackId={}",
+                     align2DStackId.toDevString(), dynamicLayerAsTileStackId.toDevString());
+
+            return builtStackId;
+        };
+
+        final JavaRDD<StackId> rddBuiltStacks = rddAlign2DSfovStacks.map(buildLayerStackFunction);
+        final List<StackId> builtStacks = rddBuiltStacks.collect();
+
+        final long skippedCount = rddBuiltStacks.filter(Objects::isNull).count();
+        final long builtCount = builtStacks.size() - skippedCount;
+
+        LOG.info("buildDynamicLayerAsTileStacks: exit, built {} stack(s), skipped build of {} pre-existing stack(s)",
+                 builtCount, skippedCount);
+    }
+
+    private static void buildRenderedLayerAsTileStacks(final JavaSparkContext sparkContext,
+                                                       final LayerAsTileStackLists layerAsTileStackLists)
+            throws IOException {
+
+        LOG.info("buildRenderedLayerAsTileStacks: entry");
+
+        final String baseDataUrl = layerAsTileStackLists.getBaseDataUrl();
+        final LayerAsTileParameters layerAsTile = layerAsTileStackLists.getLayerAsTile();
+        final String runTimestamp = layerAsTile.getRenderedLayerRunTimestamp();
+
+        final List<JavaRenderTilesClientInfoForLayer> layerClientInfoList = new ArrayList<>();
+        final List<StackId> renderedLayerStackList = new ArrayList<>();
+        for (final StackWithZValues rawSfovStackWithAllZ : layerAsTileStackLists.getAlign2DSfovStacksWithAllZ()) {
+
+            final StackId rawStackId = rawSfovStackWithAllZ.getStackId();
+            final StackId dynamicLayerAsTileStackId = layerAsTile.getDynamicLayerStackId(rawStackId);
+            final StackId renderedLayerAsTileStackId = layerAsTile.getRenderedLayerStackId(rawStackId);
+
+            if (layerAsTileStackLists.isExistingStack(renderedLayerAsTileStackId)) {
+
+                LOG.info("buildRenderedLayerAsTileStacks: skipping build of {} because it already exists",
+                         renderedLayerAsTileStackId.toDevString());
+
+            } else {
+
+                boolean isSetupNeeded = true;
+                for (final Double z : rawSfovStackWithAllZ.getzValues()) {
+                    final JavaRenderTilesClientInfoForLayer info =
+                            new JavaRenderTilesClientInfoForLayer(baseDataUrl,
+                                                                  dynamicLayerAsTileStackId,
+                                                                  z,
+                                                                  layerAsTile,
+                                                                  runTimestamp);
+                    layerClientInfoList.add(info);
+
+                    if (isSetupNeeded) {
+                        info.setupHackStackAndStorage();
+                        isSetupNeeded = false;
+                        renderedLayerStackList.add(renderedLayerAsTileStackId);
+                    }
+
+                }
+            }
+        }
+
+        if (! layerClientInfoList.isEmpty()) {
+
+            final int parallelism = Math.min(MFOVAsTileClient.MAX_PARTITIONS_FOR_ONE_WEB_SERVER, layerClientInfoList.size());
+
+            LOG.info("buildRenderedLayerAsTileStacks: distributing rendering for {} layers with parallelism {} (defaultParallelism={})",
+                     layerClientInfoList.size(), parallelism, sparkContext.defaultParallelism());
+
+            final JavaRDD<JavaRenderTilesClientInfoForLayer> rddRenderTiles = sparkContext.parallelize(layerClientInfoList,
+                                                                                                           parallelism);
+            final Function<JavaRenderTilesClientInfoForLayer, Integer> renderTilesFunction = JavaRenderTilesClientInfoForLayer::renderTiles;
+            final JavaRDD<Integer> rddRenderedTileCounts = rddRenderTiles.map(renderTilesFunction);
+
+            final List<Integer> resultList = rddRenderedTileCounts.collect();
+
+            LOG.info("buildRenderedLayerAsTileStacks: completed rendering for {} layer tiles", resultList.size());
+
+            for (final StackId hackStackId : renderedLayerStackList) {
+                final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
+                                                                         hackStackId.getOwner(),
+                                                                         hackStackId.getProject());
+                dataClient.setStackState(hackStackId.getStack(), StackMetaData.StackState.COMPLETE);
+            }
+        }
+
+        LOG.info("buildRenderedLayerAsTileStacks: exit");
+    }
+
+    private static void generateLayerAsTileMatches(final JavaSparkContext sparkContext,
+                                                   final LayerAsTileStackLists layerAsTileStackLists)
+            throws IOException {
+
+        LOG.info("generateLayerAsTileMatches: entry");
+
+        final String baseDataUrl = layerAsTileStackLists.getBaseDataUrl();
+
+        for (final String owner : layerAsTileStackLists.getOwners()) {
+
+            final RenderDataClient renderDataClient = new RenderDataClient(baseDataUrl, owner, "not_used");
+            final Set<String> existingMatchCollectionNames = renderDataClient.getOwnerMatchCollections().stream()
+                    .map(mcmd -> mcmd.getCollectionId().getName())
+                    .collect(Collectors.toSet());
+
+            for (final String project : layerAsTileStackLists.getProjectsWithOwner(owner)) {
+
+                final RenderDataClient projectStackClient = new RenderDataClient(baseDataUrl,
+                                                                                 owner,
+                                                                                 project);
+                final MultiStagePointMatchClient matchClient = new MultiStagePointMatchClient();
+
+                final List<StackWithZValues> projectStacks = layerAsTileStackLists.getRenderedLayerStacksWithAllZ(owner,
+                                                                                                                  project);
+                // match parameters are derived from each stack's bounds, so group the stacks
+                // that need matches by their derived minNumInliers and then generate matches
+                // for each of those groups in one batch
+                final Map<Integer, List<StackWithZValues>> stacksForMinNumInliers = new TreeMap<>();
+
+                for (final StackWithZValues stackWithZ : projectStacks) {
+
+                    final StackId stackId = stackWithZ.getStackId();
+                    final Bounds stackBounds = projectStackClient.getStackMetaData(stackId.getStack()).getStackBounds();
+
+                    final String matchCollectionName = stackId.getDefaultMatchCollectionId(false).getName();
+
+                    if (existingMatchCollectionNames.contains(matchCollectionName)) {
+                        LOG.info("generateLayerAsTileMatches: skipping {} match generation because it already exists",
+                                 matchCollectionName);
+                        continue;
+                    }
+
+                    final int minNumInliers = LayerAsTileParameters.deriveMatchMinNumInliers(stackBounds);
+
+                    LOG.info("generateLayerAsTileMatches: stack {} has bounds {} so its minNumInliers is {}",
+                             stackId.getStack(), stackBounds, minNumInliers);
+
+                    stacksForMinNumInliers.computeIfAbsent(minNumInliers, k -> new ArrayList<>()).add(stackWithZ);
+                }
+
+                for (final Integer minNumInliers : stacksForMinNumInliers.keySet()) {
+
+                    final List<StackWithZValues> batchStacks = stacksForMinNumInliers.get(minNumInliers);
+                    final List<String> batchStackNames = new ArrayList<>();
+                    final List<StackWithZValues> batchLayers = new ArrayList<>();
+
+                    for (final StackWithZValues stackWithZ : batchStacks) {
+                        final StackId stackId = stackWithZ.getStackId();
+                        batchStackNames.add(stackId.getStack());
+                        for (final Double z : stackWithZ.getzValues()) {
+                            batchLayers.add(new StackWithZValues(stackId, Collections.singletonList(z)));
+                        }
+                    }
+
+                    LOG.info("generateLayerAsTileMatches: starting generation with minNumInliers {} for {} layers in stacks {}",
+                             minNumInliers, batchLayers.size(), batchStackNames);
+
+                    final MultiProjectParameters multiProject = new MultiProjectParameters();
+                    multiProject.baseDataUrl = baseDataUrl;
+                    multiProject.owner = owner;
+                    multiProject.project = project;
+                    multiProject.stackIdWithZ.stackNames = batchStackNames;
+
+                    final List<MatchRunParameters> layerMatchRunList =
+                            layerAsTileStackLists.getLayerAsTile().buildLayerMatchRunList(minNumInliers);
+
+                    matchClient.generatePairsAndMatchesForRunList(sparkContext,
+                                                                  multiProject,
+                                                                  batchLayers,
+                                                                  layerMatchRunList);
+                }
+
+                patchAndValidateEachStackIsConnectedWithOneMatchCluster(baseDataUrl,
+                                                                        projectStacks);
+            }
+        }
+
+        LOG.info("generateLayerAsTileMatches: exit");
+    }
+
+    private static void patchAndValidateEachStackIsConnectedWithOneMatchCluster(final String baseDataUrl,
+                                                                                final List<StackWithZValues> projectStacks)
+            throws IOException {
+
+        final StringBuilder clusterCountErrors = new StringBuilder();
+
+        for (final StackWithZValues stackWithZValues : projectStacks) {
+
+            final StackId stackId = stackWithZValues.getStackId();
+            final String matchCollectionName = stackId.getDefaultMatchCollectionId(false).getName();
+            final MatchCollectionId matchCollectionId = new MatchCollectionId(stackId.getOwner(),
+                                                                              matchCollectionName);
+            final RenderDataClient renderDataClient = new RenderDataClient(baseDataUrl,
+                                                                           stackId.getOwner(),
+                                                                           stackId.getProject());
+
+            ConnectedTileClusterSummaryForStack summary = buildConnectedTileClusterSummary(stackWithZValues,
+                                                                                           matchCollectionId,
+                                                                                           renderDataClient);
+
+            // Stacks left unconnected by standard matching are patched instead of being treated as an error.
+            // The summary is rebuilt afterward to confirm the patching produced one connected cluster.
+            if (summary.hasUnconnectedTiles() || summary.hasMultipleClusters()) {
+
+                LOG.info("patchAndValidateEachStackIsConnectedWithOneMatchCluster: patching {}",
+                         summary);
+
+                final int patchedPairCount = patchLayerClusterBoundaries(stackWithZValues,
+                                                                         matchCollectionId,
+                                                                         renderDataClient);
+                if (patchedPairCount == 0) {
+                    throw new IOException("Patching failed to derive matches for any cluster boundary in " +
+                                          matchCollectionName + ".  " + summary.toDetailsString());
+                }
+
+                summary = buildConnectedTileClusterSummary(stackWithZValues,
+                                                           matchCollectionId,
+                                                           renderDataClient);
+            }
+
+            final String countErrorString = summary.buildCountErrorString(1,
+                                                                          0,
+                                                                          0);
+            if (! countErrorString.isEmpty()) {
+                clusterCountErrors.append(matchCollectionName).append(": ").append(countErrorString).append("\n");
+            }
+
+        }
+
+        if (clusterCountErrors.length() > 0) {
+            throw new IOException("The following match collections do not have one single cluster: " + clusterCountErrors);
+        }
+    }
+
+    private static ConnectedTileClusterSummaryForStack buildConnectedTileClusterSummary(final StackWithZValues stackWithZValues,
+                                                                                        final MatchCollectionId matchCollectionId,
+                                                                                        final RenderDataClient renderDataClient)
+            throws IOException {
+
+        final ClusterCountClient.Parameters jcccp = new ClusterCountClient.Parameters();
+        jcccp.multiProject = MultiProjectParameters.singleStackInstance(renderDataClient.getBaseDataUrl(),
+                                                                        stackWithZValues.getStackId());
+        jcccp.tileCluster = new TileClusterParameters();
+
+        final int zCount = stackWithZValues.getZCount();
+        jcccp.tileCluster.maxSmallClusterSize = 0;
+        jcccp.tileCluster.includeMatchesOutsideGroup = true;
+        jcccp.tileCluster.maxLayersPerBatch = zCount + 1;
+        jcccp.tileCluster.maxOverlapLayers = 6;
+
+        final ClusterCountClient javaClusterCountClient = new ClusterCountClient(jcccp);
+
+        try {
+            return javaClusterCountClient.findConnectedClustersForStack(stackWithZValues,
+                                                                        matchCollectionId,
+                                                                        renderDataClient,
+                                                                        jcccp.tileCluster);
+        } catch (final Exception e) {
+            throw new IOException(e);
+        }
+    }
+
+    /**
+     * Connects the match clusters in the specified stack by deriving matches from the start positions of the
+     * layer tiles on either side of each cluster boundary.
+     * <br/><br/>
+     * Layer as tile stacks have one tile per z layer, so walking the layers in z order and only patching
+     * where the previous layer's cluster differs from the current layer's cluster bridges each boundary
+     * exactly once and leaves adjacent layers that are already connected (directly or through other layers)
+     * untouched.  A completely unconnected layer tile is its own cluster, so it gets bridged to the layers
+     * on both sides of it, while two otherwise connected clusters only get the one pair spanning the split.
+     *
+     * @return the number of tile pairs that had derived matches saved.
+     */
+    private static int patchLayerClusterBoundaries(final StackWithZValues stackWithZValues,
+                                                   final MatchCollectionId matchCollectionId,
+                                                   final RenderDataClient renderDataClient)
+            throws IOException {
+
+        final StackId stackId = stackWithZValues.getStackId();
+        final String stack = stackId.getStack();
+
+        LOG.info("patchLayerClusterBoundaries: entry, {}", stackId.toDevString());
+
+        // sort the layer tiles by z so that adjacent layers are neighbors in this list
+        final List<TileSpec> layerTileSpecs =
+                renderDataClient.getResolvedTilesForZRange(stack,
+                                                           stackWithZValues.getFirstZ(),
+                                                           stackWithZValues.getLastZ())
+                        .getTileSpecs().stream()
+                        .sorted(Comparator.comparing(TileSpec::getZ))
+                        .collect(Collectors.toList());
+
+        // Derive the clusters from every stored pair.  Looping over all pGroup ids covers each pair
+        // exactly once regardless of the p/q order the pair was stored with.
+        final Map<String, String> tileIdToClusterParent = new HashMap<>();
+        layerTileSpecs.forEach(ts -> tileIdToClusterParent.put(ts.getTileId(), ts.getTileId()));
+
+        final RenderDataClient matchClient = renderDataClient.buildClient(matchCollectionId.getOwner(),
+                                                                          matchCollectionId.getName());
+        for (final String pGroupId : matchClient.getMatchPGroupIds()) {
+            for (final CanvasMatches pair : matchClient.getMatchesWithPGroupId(pGroupId, true)) {
+                // ignore pairs that reference tiles outside this stack
+                if (tileIdToClusterParent.containsKey(pair.getpId()) &&
+                    tileIdToClusterParent.containsKey(pair.getqId())) {
+                    joinClusters(tileIdToClusterParent, pair.getpId(), pair.getqId());
+                }
+            }
+        }
+
+        final List<CanvasMatches> derivedMatches = new ArrayList<>();
+
+        for (int i = 1; i < layerTileSpecs.size(); i++) {
+
+            final TileSpec pTileSpec = layerTileSpecs.get(i - 1);
+            final TileSpec qTileSpec = layerTileSpecs.get(i);
+
+            // joining returns false when both layers are already in the same cluster, so this both
+            // identifies the boundaries and records each bridge as it is derived
+            if (! joinClusters(tileIdToClusterParent, pTileSpec.getTileId(), qTileSpec.getTileId())) {
+                continue;
+            }
+
+            final CanvasId p = new CanvasId(pTileSpec.getSectionId(), pTileSpec.getTileId());
+            final CanvasId q = new CanvasId(qTileSpec.getSectionId(), qTileSpec.getTileId());
+
+            final CanvasMatches startPositionMatches =
+                    StageMatcher.generateStartPositionOverlapMatches(p,
+                                                                     pTileSpec.toTileBounds().toRectangle(),
+                                                                     q,
+                                                                     qTileSpec.toTileBounds().toRectangle(),
+                                                                     UNCONNECTED_LAYER_TILE_MATCH_WEIGHT);
+
+            if (startPositionMatches == null) {
+                // layer as tile specs all start at 0,0, so their bounds should always overlap
+                LOG.warn("patchLayerClusterBoundaries: z {} and z {} tiles in {} do not overlap, so no matches were derived",
+                         pTileSpec.getZ(), qTileSpec.getZ(), stackId.toDevString());
+            } else {
+                LOG.info("patchLayerClusterBoundaries: bridging cluster boundary between z {} and z {} in {}",
+                         pTileSpec.getZ(), qTileSpec.getZ(), stackId.toDevString());
+                derivedMatches.add(startPositionMatches);
+            }
+        }
+
+        if (! derivedMatches.isEmpty()) {
+            matchClient.saveMatches(derivedMatches);
+        }
+
+        LOG.info("patchLayerClusterBoundaries: exit, derived matches for {} cluster boundary pair(s) in {}",
+                 derivedMatches.size(), stackId.toDevString());
+
+        return derivedMatches.size();
+    }
+
+    /**
+     * Joins the clusters containing the two specified tiles.
+     *
+     * @return true if the tiles were in different clusters (and are now joined); false if they were
+     *         already in the same cluster.
+     */
+    private static boolean joinClusters(final Map<String, String> tileIdToClusterParent,
+                                        final String oneTileId,
+                                        final String anotherTileId) {
+        final String oneRoot = findClusterRoot(tileIdToClusterParent, oneTileId);
+        final String anotherRoot = findClusterRoot(tileIdToClusterParent, anotherTileId);
+        final boolean isJoinNeeded = ! oneRoot.equals(anotherRoot);
+        if (isJoinNeeded) {
+            tileIdToClusterParent.put(anotherRoot, oneRoot);
+        }
+        return isJoinNeeded;
+    }
+
+    /** @return the id of the tile at the root of the specified tile's cluster. */
+    private static String findClusterRoot(final Map<String, String> tileIdToClusterParent,
+                                          final String tileId) {
+        String root = tileId;
+        while (! root.equals(tileIdToClusterParent.get(root))) {
+            root = tileIdToClusterParent.get(root);
+        }
+        // point everything along the way at the root to keep later lookups short
+        String current = tileId;
+        while (! current.equals(root)) {
+            final String parent = tileIdToClusterParent.get(current);
+            tileIdToClusterParent.put(current, root);
+            current = parent;
+        }
+        return root;
+    }
+
+    private static void alignRenderedLayerAsTileStacks(final JavaSparkContext sparkContext,
+                                                       final LayerAsTileStackLists layerAsTileStackLists)
+            throws IOException {
+
+        LOG.info("alignRenderedLayerAsTileStacks: entry");
+
+        final String baseDataUrl = layerAsTileStackLists.getBaseDataUrl();
+        final LayerAsTileParameters layerAsTile = layerAsTileStackLists.getLayerAsTile();
+        final AffineBlockSolverSetup affineSetup = layerAsTile.buildLayerAffineBlockSolverSetup();
+
+        final boolean deriveMatchCollectionNamesFromProject = false; // use standard stack-based match collection names
+        final String matchSuffix = "";                               // without any suffix
+
+        final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
+        for (final StackWithZValues renderedLayerStackWithAllZ : layerAsTileStackLists.getRenderedLayerStacksWithAllZ()) {
+
+            final StackId renderedLayerStackId = renderedLayerStackWithAllZ.getStackId();
+            final StackId alignedLayerStackId =
+                    renderedLayerStackId.withStackSuffix(layerAsTile.getAlignedLayerStackSuffix());
+
+            if (layerAsTileStackLists.isExistingStack(alignedLayerStackId)) {
+                LOG.info("alignRenderedLayerAsTileStacks: skipping alignment of {} because {} already exists",
+                         renderedLayerStackId.toDevString(), alignedLayerStackId.toDevString());
+            } else {
+                setupList.add(affineSetup.buildPipelineClone(baseDataUrl,
+                                                             renderedLayerStackWithAllZ,
+                                                             deriveMatchCollectionNamesFromProject,
+                                                             matchSuffix));
+            }
+        }
+
+        if (! setupList.isEmpty()) {
+            LOG.info("alignRenderedLayerAsTileStacks: distributing alignment of {} stack(s)", setupList.size());
+            final DistributedAffineBlockSolverClient affineBlockSolverClient = new DistributedAffineBlockSolverClient();
+            affineBlockSolverClient.alignSetupList(sparkContext, setupList);
+        }
+
+        LOG.info("alignRenderedLayerAsTileStacks: exit");
+    }
+
+    private static void buildAlign3DSfovStacks(final JavaSparkContext sparkContext,
+                                               final LayerAsTileStackLists layerAsTileStackLists) {
+
+        LOG.info("buildAlign3DSfovStacks: entry");
+
+        final String baseDataUrl = layerAsTileStackLists.getBaseDataUrl();
+        final LayerAsTileParameters layerAsTile = layerAsTileStackLists.getLayerAsTile();
+        final String align3DSfovStackSuffix = layerAsTile.getAlign3DSfovStackSuffix();
+        final String renderedLayerStackSuffix = layerAsTile.getRenderedLayerStackSuffixForRawSfovStack();
+        final String alignedLayerStackSuffixForRaw = layerAsTile.getAlignedLayerStackSuffixForRawSfovStack();
+
+        final List<StackWithZValues> rawSfovStacksWithAllZ = layerAsTileStackLists.getAlign2DSfovStacksWithAllZ();
+        final List<StackWithZValues> align3DSfovStacksWithAllZ = layerAsTileStackLists.getAlign3DSfovStacksWithAllZ();
+
+        final List<StackWithZValues> rawSfovStacksNeedingAlign3DStack = new ArrayList<>();
+
+        for (int i = 0; i < align3DSfovStacksWithAllZ.size(); i++) {
+            final StackWithZValues align3DSfovStackWithAllZ = align3DSfovStacksWithAllZ.get(i);
+            final StackId align3DSfovStackId = align3DSfovStackWithAllZ.getStackId();
+            if (layerAsTileStackLists.isExistingStack(align3DSfovStackId)) {
+                LOG.info("buildAlign3DSfovStacks: skipping creation of {} because it already exists",
+                         align3DSfovStackId.toDevString());
+            } else {
+                rawSfovStacksNeedingAlign3DStack.add(rawSfovStacksWithAllZ.get(i));
+            }
+        }
+
+        if (! rawSfovStacksNeedingAlign3DStack.isEmpty()) {
+
+            final int parallelism = Math.min(MFOVAsTileClient.MAX_PARTITIONS_FOR_ONE_WEB_SERVER, rawSfovStacksNeedingAlign3DStack.size());
+
+            LOG.info("buildAlign3DSfovStacks: distributing build of {} stack(s) with parallelism {} (defaultParallelism={})",
+                     rawSfovStacksNeedingAlign3DStack.size(), parallelism, sparkContext.defaultParallelism());
+
+            final JavaRDD<StackWithZValues> rddAlignedStacks = sparkContext.parallelize(rawSfovStacksNeedingAlign3DStack,
+                                                                                        parallelism);
+
+            final Function<StackWithZValues, StackId> buildAlign3DStackFunction = stackWithAllZ -> {
+
+                LogUtilities.setupExecutorLog4j(stackWithAllZ.getStackId().toDevString());
+
+                final StackId rawSfovStackId = stackWithAllZ.getStackId();
+                final StackId renderedLayerStackId = rawSfovStackId.withStackSuffix(renderedLayerStackSuffix);
+                final StackId alignedLayerStackId = rawSfovStackId.withStackSuffix(alignedLayerStackSuffixForRaw);
+                final StackId align3DSfovStackId = rawSfovStackId.withStackSuffix(align3DSfovStackSuffix);
+                final String align3DSfovStack = align3DSfovStackId.getStack();
+
+                final RenderDataClient workerDataClient = new RenderDataClient(baseDataUrl,
+                                                                               rawSfovStackId.getOwner(),
+                                                                               rawSfovStackId.getProject());
+
+                final StackMetaData rawSfovStackMetaData = workerDataClient.getStackMetaData(rawSfovStackId.getStack());
+                workerDataClient.setupDerivedStack(rawSfovStackMetaData, align3DSfovStack);
+
+                for (final Double z : stackWithAllZ.getzValues()) {
+                    final ResolvedTileSpecCollection align3DTiles = buildAlign3DTileSpecsForZ(workerDataClient,
+                                                                                              rawSfovStackId.getStack(),
+                                                                                              z,
+                                                                                              renderedLayerStackId.getStack(),
+                                                                                              alignedLayerStackId.getStack(),
+                                                                                              layerAsTile.getLayerRenderScale());
+                    workerDataClient.saveResolvedTiles(align3DTiles, align3DSfovStack, z);
+                }
+
+                workerDataClient.setStackState(align3DSfovStack, StackMetaData.StackState.COMPLETE);
+
+                return align3DSfovStackId;
+            };
+
+            final JavaRDD<StackId> rddBuiltStacks = rddAlignedStacks.map(buildAlign3DStackFunction);
+            final List<StackId> builtStacks = rddBuiltStacks.collect();
+
+            LOG.info("buildAlign3DSfovStacks: completed build of {} stack(s)", builtStacks.size());
+        }
+
+        LOG.info("buildAlign3DSfovStacks: exit");
+    }
+
+    private static TileSpec getLayerTileSpec(final String stack,
+                                             final ResolvedTileSpecCollection resolveTiles) throws IOException {
+        final Collection<TileSpec> tileSpecList = resolveTiles.getTileSpecs();
+        if (tileSpecList.size() != 1) {
+            throw new IOException("expected 1 tile in " + stack + " but found " + tileSpecList.size());
+        }
+        return tileSpecList.iterator().next();
+    }
+
+    @Nonnull
+    private static ResolvedTileSpecCollection buildAlign3DTileSpecsForZ(final RenderDataClient dataClient,
+                                                                        final String rawSfovStack,
+                                                                        final double z,
+                                                                        final String renderedLayerStack,
+                                                                        final String alignedLayerStack,
+                                                                        final double layerAsTileRenderScale)
+            throws IOException {
+
+        final String stackZContext = rawSfovStack + " z " + z;
+
+        // example SFOV tile spec:
+        // {
+        //   "tileId": "w61_magc0145_scan004_m0009_r32_s49",
+        //   ...
+        //   "transforms": {
+        //     "type": "list",
+        //     "specList": [
+        //       {
+        //         "className": "org.janelia.alignment.transform.ExponentialFunctionOffsetTransform",
+        //         "dataString": "3.164065083689898,0.010223592506552219,0.0,0"
+        //       },
+        //       {
+        //         "className": "mpicbg.trakem2.transform.AffineModel2D",
+        //         "dataString": "0.9989275629591378 -0.0034777133301720285 0.001945630942943617 1.0041687686777434 33733.93229071569 52312.024345042184"
+        //       }
+        //     ]
+        //   },
+        //   ...
+        // }
+        final ResolvedTileSpecCollection sfovTiles = dataClient.getResolvedTiles(rawSfovStack, z);
+
+        // example layer-as-tile spec:
+        // {
+        //   "tileId": "w61_s109_r00_gc_par_crc_aso_z001",
+        //   ...
+        //   "transforms": {
+        //     "type": "list",
+        //     "specList": [
+        //       {
+        //         "className": "mpicbg.trakem2.transform.AffineModel2D",
+        //         "dataString": "0.9995111984001582 3.8059309390139125E-4 -2.3150605242131648E-4 1.0058163225403765 1.7289345344867812 13.165940488916831"
+        //       }
+        //     ]
+        //   },
+        //   ...
+        // }
+
+        final ResolvedTileSpecCollection renderedLayerTiles = dataClient.getResolvedTiles(renderedLayerStack, z);
+        final TileSpec renderedLayerTileSpec = getLayerTileSpec(renderedLayerStack, renderedLayerTiles);
+        final TransformSpec renderedLayerTransformSpec = renderedLayerTileSpec.getLastTransform();
+        final AffineModel2D renderedLayerModel =
+                ResolvedTileSpecCollection.getAffineModelForSpec(stackZContext,
+                                                                 renderedLayerTransformSpec);
+
+        // Invert renderedLayerModel to convert the scaled SFOV (layer world) coordinate
+        // into a local coordinate before the alignment is applied.
+        // This accounts for each rendered layer image having a different size and world origin.
+        final AffineModel2D layerToRenderedLocal = renderedLayerModel.createInverse();
+
+        final ResolvedTileSpecCollection alignedLayerTiles = dataClient.getResolvedTiles(alignedLayerStack, z);
+        final TileSpec alignedLayerTileSpec = getLayerTileSpec(alignedLayerStack, alignedLayerTiles);
+        final TransformSpec alignedLayerTransformSpec = alignedLayerTileSpec.getLastTransform();
+        final AffineModel2D alignedLayerModel =
+                ResolvedTileSpecCollection.getAffineModelForSpec(stackZContext,
+                                                                 alignedLayerTransformSpec);
+
+        final AffineModel2D scaleSFOVToLayer = new AffineModel2D();
+        scaleSFOVToLayer.set(layerAsTileRenderScale, 0, 0,
+                             layerAsTileRenderScale, 0, 0);
+
+        final AffineModel2D scaleLayerToSFOV = new AffineModel2D();
+        final double inverseLayerAsTileRenderScale = 1.0 / layerAsTileRenderScale;
+        scaleLayerToSFOV.set(inverseLayerAsTileRenderScale, 0, 0,
+                             inverseLayerAsTileRenderScale, 0, 0);
+
+        final AffineModel2D sfovModel = new AffineModel2D();
+        sfovModel.set(alignedLayerModel);
+        sfovModel.concatenate(layerToRenderedLocal); // alignedLayerModel * renderedLayerModel^-1
+        sfovModel.concatenate(scaleSFOVToLayer);     // alignedLayerModel * renderedLayerModel^-1 * scaleSFOVToLayer
+        sfovModel.preConcatenate(scaleLayerToSFOV);  // scaleLayerToSFOV * alignedLayerModel * renderedLayerModel^-1 * scaleSFOVToLayer
+
+        final String sfovModelDataString = sfovModel.toDataString();
+
+        final LeafTransformSpec zLayerTransformSpec =
+                new LeafTransformSpec("mpicbg.trakem2.transform.AffineModel2D",
+                                      sfovModelDataString);
+
+        LOG.info("buildAlign3DTileSpecsForZ: adding AffineModel2D transform {} to all tiles in {}",
+                 sfovModelDataString, stackZContext);
+
+        for (final TileSpec tileSpec : sfovTiles.getTileSpecs()) {
+            sfovTiles.addTransformSpecToTile(tileSpec.getTileId(),
+                                             zLayerTransformSpec,
+                                             TransformApplicationMethod.PRE_CONCATENATE_LAST);
+        }
+
+        return sfovTiles;
+    }
+
+    // Serializable information that can be used to build RenderTilesClient instances in remote Spark workers
+    public static class JavaRenderTilesClientInfoForLayer
+            implements Serializable {
+
+        private final String baseDataUrl;
+        private final StackId stackId;
+        private final double z;
+        private final TileRenderParameters tileRender;
+
+        public JavaRenderTilesClientInfoForLayer(final String baseDataUrl,
+                                                 final StackId stackId,
+                                                 final double z,
+                                                 final LayerAsTileParameters layerAsTile,
+                                                 final String runTimestamp) {
+            this.baseDataUrl = baseDataUrl;
+            this.stackId = stackId;
+            this.z = z;
+            final String hackStack = stackId.getStack() + layerAsTile.getRenderedLayerStackSuffix();
+            this.tileRender = TileRenderParameters.buildXAsTileVersion(layerAsTile.getLayerRootDirectory(),
+                                                                       runTimestamp,
+                                                                       hackStack);
+        }
+
+        public org.janelia.render.client.tile.RenderTilesClient buildJavaRenderTilesClient() {
+            return new org.janelia.render.client.tile.RenderTilesClient(
+                    new RenderDataClient(baseDataUrl, stackId.getOwner(), stackId.getProject()),
+                    stackId.getStack(),
+                    tileRender);
+        }
+
+        public void setupHackStackAndStorage()
+                throws IOException {
+            final org.janelia.render.client.tile.RenderTilesClient jClient = buildJavaRenderTilesClient();
+            jClient.setupHackStackAsNeeded();
+            jClient.setupStorageDirectories();
+        }
+
+        public int renderTiles()
+                throws IOException {
+            LogUtilities.setupExecutorLog4j(stackId.toDevString());
+            LOG.info("renderTiles: entry, stackId={}, z={}", stackId.toDevString(), z);
+            final org.janelia.render.client.tile.RenderTilesClient jClient = buildJavaRenderTilesClient();
+            jClient.renderTiles(Collections.singletonList(z));
+            return 1;
+        }
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(LayerAsTileClient.class);
+
+    /**
+     * Weight for matches derived from the start positions of an unconnected layer tile and its adjacent
+     * layer tile(s).  Kept very small so that any standard matches are given precedence.
+     */
+    private static final double UNCONNECTED_LAYER_TILE_MATCH_WEIGHT = 0.001;
+}

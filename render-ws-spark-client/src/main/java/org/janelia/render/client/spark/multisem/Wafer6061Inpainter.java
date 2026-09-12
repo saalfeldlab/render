@@ -17,7 +17,6 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import bdv.export.Downsample;
 import net.imglib2.Cursor;
 import net.imglib2.IterableInterval;
 import net.imglib2.KDTree;
@@ -50,7 +49,9 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.spark.util.Downsample;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -866,12 +867,12 @@ public class Wafer6061Inpainter {
 
 	/** Opens an N5 reader for a tissue/backup container (explicit N5 format; local path or gs://). */
 	private static N5Reader openN5Reader(final String path) {
-		return new N5Factory().openReader(N5Factory.StorageFormat.N5, path);
+		return new N5Factory().openReader(StorageFormat.N5, path);
 	}
 
 	/** Opens an N5 writer for a tissue/backup container (explicit N5 format; local path or gs://). */
 	private static N5Writer openN5Writer(final String path) {
-		return new N5Factory().openWriter(N5Factory.StorageFormat.N5, path);
+		return new N5Factory().openWriter(StorageFormat.N5, path);
 	}
 
 	/**

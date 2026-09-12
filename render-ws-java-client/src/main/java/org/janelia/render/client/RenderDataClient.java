@@ -892,6 +892,34 @@ public class RenderDataClient {
      * @param  stack  name of stack.
      * @param  z      z value for layer.
      *
+     * @return ids for all tiles in the specified layer of the specified stack.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<String> getTileIdsForZ(final String stack,
+                                       final Double z)
+            throws IOException {
+
+        final URIBuilder builder = new URIBuilder(getUri(urls.getStackUrlString(stack) + "/tileIds"));
+        final URI uri = getUriWithZRangeParameters(z, z, builder);
+
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final TypeReference<List<String>> typeReference = new TypeReference<>() {
+        };
+        final JsonUtils.GenericHelper<List<String>> helper = new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<String>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getTileIdsForZ: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
+     * @param  stack  name of stack.
+     * @param  z      z value for layer.
+     *
      * @return list of tile bounds for the specified layer.
      *
      * @throws IOException

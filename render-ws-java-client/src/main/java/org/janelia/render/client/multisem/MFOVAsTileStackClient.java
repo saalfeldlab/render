@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.janelia.alignment.multisem.Layer;
 import org.janelia.alignment.multisem.MultiSemMfovColumn;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
@@ -88,65 +89,76 @@ public class MFOVAsTileStackClient {
         final List<StackWithZValues> stackWithZList = parameters.multiProject.buildListOfStackWithAllZ();
 
         for (final StackWithZValues stackWithZ : stackWithZList) {
-            buildOneMFOVAsTileStack(stackWithZ,
-                                    renderDataClient,
-                                    parameters.mfovTileRenderScale,
-                                    parameters.mfovTileStackSuffix);
+            buildOneXAsTileStack(stackWithZ,
+                                 renderDataClient,
+                                 parameters.mfovTileRenderScale,
+                                 parameters.mfovTileStackSuffix,
+                                 true);
         }
     }
 
     /**
-     * Builds an MFOV as tile stack for the specified stack with Z values.
+     * Builds an MFOV-as-tile or layer-as-tile stack for the specified stack with Z values.
      *
      * @param  stackWithZ           identifies the source stack.
      * @param  renderDataClient     web service client for render stack data.
-     * @param  mfovTileRenderScale  scale for rendered SFOVs when creating the MFOV tiles.
-     * @param  mfovTileStackSuffix  suffix to append to the source stack name when creating the MFOV as tile stack name.
+     * @param  xAsTileRenderScale   scale for rendered SFOVs when creating the MFOV/layer tiles.
+     * @param  xAsTileStackSuffix   suffix to append to the source stack name when creating the MFOV/layer as tile stack name.
+     * @param  isMFOVAsTileStack    true means MFOV-as-tile stack, false means layer-as-tile stack
      *
-     * @return the identifier of the newly created MFOV as tile stack.
+     * @return the identifier of the newly created MFOV/layer as tile stack.
      *
      * @throws IOException
      *   if the build fails for any reason.
      */
-    public static StackId buildOneMFOVAsTileStack(final StackWithZValues stackWithZ,
-                                                  final RenderDataClient renderDataClient,
-                                                  final Double mfovTileRenderScale,
-                                                  final String mfovTileStackSuffix)
+    public static StackId buildOneXAsTileStack(final StackWithZValues stackWithZ,
+                                               final RenderDataClient renderDataClient,
+                                               final Double xAsTileRenderScale,
+                                               final String xAsTileStackSuffix,
+                                               final boolean isMFOVAsTileStack)
             throws IOException, IllegalStateException {
 
+        final String baseDataUrl = renderDataClient.getBaseDataUrl();
         final StackId sourceStackId = stackWithZ.getStackId();
         final String sourceStackName = sourceStackId.getStack();
-        final StackId mfovAsTileStackId = stackWithZ.getStackId().withStackSuffix(mfovTileStackSuffix);
+        final StackId xAsTileStackId = stackWithZ.getStackId().withStackSuffix(xAsTileStackSuffix);
 
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(sourceStackName);
-        final String mfovAsTileStackName = mfovAsTileStackId.getStack();
+        final String xAsTileStackName = xAsTileStackId.getStack();
 
-        // TODO: fix mfovAsTileStack metadata to reflect actual pixel resolution
+        // TODO: fix xAsTileStack metadata to reflect actual pixel resolution
         renderDataClient.setupDerivedStack(stackMetaData,
-                                           mfovAsTileStackName);
+                                           xAsTileStackName);
 
         for (final Double z : stackWithZ.getzValues()) {
 
             final List<TileBounds> sourceTileBoundsListForZLayer =
                     renderDataClient.getTileBounds(sourceStackId.getStack(), z);
 
-            final List<MultiSemMfovColumn> mfovColumnList =
-                    MultiSemMfovColumn.assembleColumnData(sourceStackId, z, sourceTileBoundsListForZLayer);
+            final List<TileSpec> xTileSpecs = new ArrayList<>();
+            if (isMFOVAsTileStack) {
+                final List<MultiSemMfovColumn> mfovColumnList =
+                        MultiSemMfovColumn.assembleColumnData(sourceStackId, z, sourceTileBoundsListForZLayer);
 
-            final List<TileSpec> mfovTileSpecs = new ArrayList<>();
-            for (final MultiSemMfovColumn mfovColumn : mfovColumnList) {
-                mfovTileSpecs.addAll(mfovColumn.buildMfovTileSpecs(renderDataClient.getBaseDataUrl(),
-                                                                   sourceStackId,
-                                                                   mfovTileRenderScale));
+                for (final MultiSemMfovColumn mfovColumn : mfovColumnList) {
+                    xTileSpecs.addAll(mfovColumn.buildMfovTileSpecs(baseDataUrl,
+                                                                    sourceStackId,
+                                                                    xAsTileRenderScale));
+                }
+            } else {
+                xTileSpecs.add(Layer.buildTileSpec(baseDataUrl,
+                                                   sourceStackId,
+                                                   z,
+                                                   xAsTileRenderScale));
             }
 
-            final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(mfovTileSpecs);
-            renderDataClient.saveResolvedTiles(resolvedTiles, mfovAsTileStackName, z);
+            final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(xTileSpecs);
+            renderDataClient.saveResolvedTiles(resolvedTiles, xAsTileStackName, z);
         }
 
-        renderDataClient.setStackState(mfovAsTileStackName, StackMetaData.StackState.COMPLETE);
+        renderDataClient.setStackState(xAsTileStackName, StackMetaData.StackState.COMPLETE);
 
-        return mfovAsTileStackId;
+        return xAsTileStackId;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVAsTileStackClient.class);

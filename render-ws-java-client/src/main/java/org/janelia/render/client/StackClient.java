@@ -241,7 +241,7 @@ public class StackClient {
         if (parameters.zValues != null) {
             zValues = new ArrayList<>(parameters.zValues.size());
             for (final String zString : parameters.zValues) {
-                zValues.add(new Double(zString));
+                zValues.add(Double.valueOf(zString));
             }
         }
 
@@ -304,9 +304,9 @@ public class StackClient {
                 renderDataClient.deleteStackSection(stack, parameters.sectionId);
             }
         } else {
-            Double z;
+            double z;
             for (final String zString : parameters.zValues) {
-                z = new Double(zString);
+                z = Double.parseDouble(zString);
                 renderDataClient.deleteStack(stack, z);
             }
             if (parameters.sectionId != null) {

@@ -122,7 +122,11 @@ fi
 
 export RENDER_JETTY_MIN_AND_MAX_MEMORY="${JETTY_MEM_GB}g"
 
-# jetty_wrapper.sh start does not seem to work and we want to keep the container active anyway
-# jetty_wrapper.sh run keeps the container active
-echo "starting jetty_wrapper.sh run with memory ${RENDER_JETTY_MIN_AND_MAX_MEMORY}"
-deploy/jetty_base/jetty_wrapper.sh run
+# The "run-fg" action execs the JVM so that it becomes this container's main process, keeping the
+# container active and sending Jetty's output to the container console.
+#
+# Note that jetty_wrapper.sh "start" and "run" both return immediately with Jetty 10.0.26 because
+# bin/jetty.sh now starts the JVM in the background.  Jetty 10.0.13's "run" action exec'd the JVM,
+# which is why it used to keep the container active.
+echo "starting jetty_wrapper.sh run-fg with memory ${RENDER_JETTY_MIN_AND_MAX_MEMORY}"
+deploy/jetty_base/jetty_wrapper.sh run-fg

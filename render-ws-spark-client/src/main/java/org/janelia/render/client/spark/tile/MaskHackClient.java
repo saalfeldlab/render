@@ -1,4 +1,4 @@
-package org.janelia.render.client.spark.mask;
+package org.janelia.render.client.spark.tile;
 
 import com.beust.jcommander.ParametersDelegate;
 

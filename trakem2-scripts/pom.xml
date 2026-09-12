@@ -5,7 +5,7 @@
     <parent>
         <artifactId>modules-root</artifactId>
         <groupId>org.janelia.render</groupId>
-        <version>4.3.0-SNAPSHOT</version>
+        <version>5.0.0-SNAPSHOT</version>
     </parent>
 
     <name>TrakEM2 Scripts</name>
@@ -47,6 +47,24 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer"
                                              combine.children="append">
                                     <resource>META-INF/json/org.janelia.saalfeldlab.n5.Compression$CompressionType</resource>
+                                </transformer>
+
+                                <!--
+                                    As of n5 4.x, compressions and codecs (block codecs, sharding, chunk grids, and
+                                    chunk key encodings) are also registered by name with @NameConfig.Name annotations
+                                    that get serialized into
+                                    META-INF/json/org.janelia.saalfeldlab.n5.serialization.NameConfig$Name files.
+
+                                    org.janelia.saalfeldlab:n5, org.janelia.saalfeldlab:n5-zarr, and
+                                    org.janelia:n5-zstandard each define a different set of names (e.g. n5 defines the
+                                    n5bytes and sharding_indexed codecs while n5-zarr defines the bytes codec and the
+                                    v2 chunk key encoding), so these need to be combined just like the
+                                    Compression$CompressionType resource above. Keeping only one of them leaves the
+                                    fat jar unable to resolve the other jars' codecs by name at runtime.
+                                -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer"
+                                             combine.children="append">
+                                    <resource>META-INF/json/org.janelia.saalfeldlab.n5.serialization.NameConfig$Name</resource>
                                 </transformer>
 
                                 <!-- copied these transformers from hot-knife pom.xml -->
@@ -238,11 +256,11 @@
             <version>${n5-version}</version>
         </dependency>
 
-        <!-- Use older version of jackson to keep consistent with render-ws jackson-jaxrs-json-provider version. -->
+        <!-- Version comes from the jackson.version property in the root pom, which keeps jackson-databind
+             in sync with jackson-core, jackson-annotations and the jaxrs provider. -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson-version}</version>
         </dependency>
 
         <!-- Dependencies not defined in SciJava -->

@@ -8,8 +8,10 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.storage.StorageLevel;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.DistributedIntensityCorrectionSolver;
@@ -31,7 +33,9 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -277,16 +281,36 @@ public class DistributedIntensityCorrectionBlockSolverClient
 		final int nRuns = setup.alternatingRuns.nRuns;
 		final boolean cleanUpIntermediateStacks = ! setup.alternatingRuns.keepIntermediateStacks;
 
+		// 2D corrections are independent for each layer, so build a setup for each layer instead of
+		// for each stack.  This distributes the layers of a stack across the cluster instead of
+		// solving them one after another within the same task.
+		setup.initDefaultValues();
+		final boolean correctEachLayerSeparately = setup.is2DCorrectionWithoutXYPartitioning();
+
 		for (final StackWithZValues stackWithZValues : stackList) {
-			setupList.add(setup.buildPipelineClone(multiProject.getBaseDataUrl(),
-												   stackWithZValues));
+			if (correctEachLayerSeparately) {
+				setupList.addAll(setup.buildPipelineClonesForEachZ(multiProject.getBaseDataUrl(),
+																   stackWithZValues));
+			} else {
+				setupList.add(setup.buildPipelineClone(multiProject.getBaseDataUrl(),
+													   stackWithZValues));
+			}
 		}
+
+		LOG.info("runPipelineStep: built {} setup(s) for {} stack(s), correctEachLayerSeparately={}",
+				 setupList.size(), stackList.size(), correctEachLayerSeparately);
 
 		final DistributedIntensityCorrectionBlockSolverClient intensityCorrectionSolverClient = new DistributedIntensityCorrectionBlockSolverClient();
 
 		if (nRuns == 1) {
 
 			intensityCorrectionSolverClient.intensityCorrectSetupList(sparkContext, setupList);
+
+			// per-layer setups leave their target stacks in the LOADING state, so complete each
+			// target stack once here after all of its layers have been saved
+			if (correctEachLayerSeparately && setup.targetStack.completeStack) {
+				completeTargetStacks(setupList);
+			}
 
 		} else {
 
@@ -317,6 +341,45 @@ public class DistributedIntensityCorrectionBlockSolverClient
 	@Override
 	public AlignmentPipelineStepId getDefaultStepId() {
 		return AlignmentPipelineStepId.CORRECT_INTENSITY;
+	}
+
+	/**
+	 * Completes each distinct target stack in the specified setup list.
+	 * This is needed for runs with one setup per layer because those setups
+	 * save layers to a shared target stack and cannot safely complete it themselves.
+	 *
+	 * @throws IOException
+	 *   if any request fails.
+	 */
+	private static void completeTargetStacks(final List<IntensityCorrectionSetup> setupList)
+			throws IOException {
+
+		final Map<StackId, IntensityCorrectionSetup> targetStackIdToSetup = new LinkedHashMap<>();
+
+		for (final IntensityCorrectionSetup setup : setupList) {
+			if (setup.targetStack.stack != null) {
+				final StackId targetStackId = new StackId(setup.targetStack.owner,
+														  setup.targetStack.project,
+														  setup.targetStack.stack);
+				targetStackIdToSetup.putIfAbsent(targetStackId, setup);
+			}
+		}
+
+		LOG.info("completeTargetStacks: entry, completing {} stack(s)", targetStackIdToSetup.size());
+
+		for (final Map.Entry<StackId, IntensityCorrectionSetup> entry : targetStackIdToSetup.entrySet()) {
+
+			final StackId targetStackId = entry.getKey();
+			final RenderDataClient dataClient =
+					entry.getValue().renderWeb.getDataClient().buildClient(targetStackId.getOwner(),
+																		   targetStackId.getProject());
+
+			LOG.info("completeTargetStacks: completing {}", targetStackId.toDevString());
+
+			dataClient.setStackState(targetStackId.getStack(), StackMetaData.StackState.COMPLETE);
+		}
+
+		LOG.info("completeTargetStacks: exit");
 	}
 
 	private List<List<IntensityCorrectionSetup>> buildSetupListsForRuns(final int nRuns,

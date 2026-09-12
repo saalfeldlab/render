@@ -263,6 +263,7 @@ public class DebugTransformedCornersClient {
                                                                    false,
                                                                    false,
                                                                    false,
+                                                                   false,
                                                                    false);
 
             neighborPairs.addAll(currentNeighborPairs);

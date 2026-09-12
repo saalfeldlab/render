@@ -36,6 +36,8 @@ public class MFOVAsTileParameters
     private final String alignedMfovStackSuffix;
     private final String roughSfovStackSuffix;
     private final Double minCrossMatchPixelDistance;
+    private final boolean deriveSfovMatchData;
+    private final Integer crossMatchPassCount;
 
     public MFOVAsTileParameters() {
         this(null,
@@ -62,6 +64,8 @@ public class MFOVAsTileParameters
              null,
              alignedMfovStackSuffix,
              roughSfovStackSuffix,
+             null,
+             true,
              null);
     }
 
@@ -73,7 +77,9 @@ public class MFOVAsTileParameters
                                 final String renderedMfovRunTimestamp,
                                 final String alignedMfovStackSuffix,
                                 final String roughSfovStackSuffix,
-                                final Double minCrossMatchPixelDistance) {
+                                final Double minCrossMatchPixelDistance,
+                                final boolean deriveSfovMatchData,
+                                final Integer crossMatchPassCount) {
         this.mfovRenderScale = mfovRenderScale;
         this.mfovRootDirectory = mfovRootDirectory;
         this.prealignedSfovStackSuffix = prealignedSfovStackSuffix;
@@ -83,6 +89,8 @@ public class MFOVAsTileParameters
         this.alignedMfovStackSuffix = alignedMfovStackSuffix;
         this.roughSfovStackSuffix = roughSfovStackSuffix;
         this.minCrossMatchPixelDistance = minCrossMatchPixelDistance;
+        this.deriveSfovMatchData = deriveSfovMatchData;
+        this.crossMatchPassCount = crossMatchPassCount;
     }
 
     public Double getMfovRenderScale() {
@@ -115,6 +123,28 @@ public class MFOVAsTileParameters
 
     public Double getMinCrossMatchPixelDistance() {
         return minCrossMatchPixelDistance;
+    }
+
+    public boolean isDeriveSfovMatchData() {
+        return deriveSfovMatchData;
+    }
+
+    /**
+     * @return number of cross MFOV-as-tile match passes to run
+     *         (the third pass renders at a larger scale and is only needed for special cases).
+     *
+     * @throws IllegalArgumentException
+     *   if the configured count is not between 1 and the number of defined passes.
+     */
+    public int getCrossMatchPassCount()
+            throws IllegalArgumentException {
+        final int passCount = crossMatchPassCount == null ?
+                              DEFAULT_CROSS_MATCH_PASS_COUNT : crossMatchPassCount;
+        if ((passCount < 1) || (passCount > MAX_CROSS_MATCH_PASS_COUNT)) {
+            throw new IllegalArgumentException("crossMatchPassCount must be between 1 and " +
+                                               MAX_CROSS_MATCH_PASS_COUNT + " but is " + passCount);
+        }
+        return passCount;
     }
 
     public String getDynamicMfovStackSuffixForRawSfovStack() {
@@ -160,7 +190,7 @@ public class MFOVAsTileParameters
     public List<MatchRunParameters> buildMfovMatchRunList() {
         final List<MatchRunParameters> mfovMatchRunList = new ArrayList<>();
         mfovMatchRunList.add(buildMontageMatchRunParameters());
-        mfovMatchRunList.add(buildCrossMatchRunParameters());
+        mfovMatchRunList.add(buildCrossMatchRunParameters(getCrossMatchPassCount()));
         return mfovMatchRunList;
     }
 
@@ -199,6 +229,10 @@ public class MFOVAsTileParameters
                   final List<Double> lambdasTranslation) {
             this.stackSuffix = stackSuffix;
             this.lambdasTranslation = lambdasTranslation;
+        }
+
+        public List<Double> getLambdasTranslation() {
+            return lambdasTranslation;
         }
     }
 
@@ -246,18 +280,24 @@ public class MFOVAsTileParameters
     private static MatchRunParameters buildMontageMatchRunParameters() {
         final List<MatchStageParameters> matchStageParametersList =
                 List.of(new MatchStageParameters("montageMfovAsTilePass1",
-                                                 buildFeatureRenderParameters(0.4), // 11 secs for 15 matches between w60_s360_r00_gc_z025_m0017 and w60_s360_r00_gc_z025_m0026
+                                                 buildFeatureRenderParameters(0.4,
+                                                                              true), // 11 secs for 15 matches between w60_s360_r00_gc_z025_m0017 and w60_s360_r00_gc_z025_m0026
                                                  new FeatureRenderClipParameters(1500, 1500),
                                                  buildFeatureExtractionParameters(),
-                                                 buildFeatureMatchDerivation(100),
+                                                 buildFeatureMatchDerivation(MatchFilter.FilterType.SINGLE_SET,
+                                                                             100,
+                                                                             ModelType.TRANSLATION),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
                                                  null),
                         new MatchStageParameters("montageMfovAsTilePass2",
-                                                 buildFeatureRenderParameters(1.0), // 220 secs for 261 matches between w60_s360_r00_gc_z025_m0017 and w60_s360_r00_gc_z025_m0026
+                                                 buildFeatureRenderParameters(1.0,
+                                                                              true), // 220 secs for 261 matches between w60_s360_r00_gc_z025_m0017 and w60_s360_r00_gc_z025_m0026
                                                  new FeatureRenderClipParameters(1500, 1500),
                                                  buildFeatureExtractionParameters(),
-                                                 buildFeatureMatchDerivation(25),
+                                                 buildFeatureMatchDerivation(MatchFilter.FilterType.SINGLE_SET,
+                                                                             25,
+                                                                             ModelType.TRANSLATION),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
                                                  null));
@@ -276,22 +316,40 @@ public class MFOVAsTileParameters
     //     renderScale 0.6:  372 seconds ( 6 minutes) for  8319 matches
     //     renderScale 1.0: 2915 seconds (49 minutes) for 25210 matches - at this scale, matching would take 8 days
 
-    private static MatchRunParameters buildCrossMatchRunParameters() {
-        // 2 passes, render scales 0.2 and 0.3, minInliers 150
-        final List<MatchStageParameters> matchStageParametersList =
+    private static MatchRunParameters buildCrossMatchRunParameters(final int passCount) {
+        // up to 3 passes, render scales 0.2, 0.3, and 0.5 with minInliers 150
+        // (the 0.5 scale third pass is only needed for special cases like small region 01 stacks)
+        final List<MatchStageParameters> allStageParametersList =
                 List.of(new MatchStageParameters("crossMfovAsTilePass1",
-                                                 buildFeatureRenderParameters(0.2),
+                                                 buildFeatureRenderParameters(0.2,
+                                                                              true),
                                                  new FeatureRenderClipParameters(),
                                                  buildFeatureExtractionParameters(),
-                                                 buildFeatureMatchDerivation(150),
+                                                 buildFeatureMatchDerivation(MatchFilter.FilterType.SINGLE_SET,
+                                                                             150,
+                                                                             ModelType.TRANSLATION),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
                                                  null),
                         new MatchStageParameters("crossMfovAsTilePass2",
-                                                 buildFeatureRenderParameters(0.3),
+                                                 buildFeatureRenderParameters(0.3,
+                                                                              true),
                                                  new FeatureRenderClipParameters(),
                                                  buildFeatureExtractionParameters(),
-                                                 buildFeatureMatchDerivation(150),
+                                                 buildFeatureMatchDerivation(MatchFilter.FilterType.SINGLE_SET,
+                                                                             150,
+                                                                             ModelType.TRANSLATION),
+                                                 buildDisabledGeometricDescriptorAndMatch(),
+                                                 null,
+                                                 null),
+                        new MatchStageParameters("crossMfovAsTilePass3",
+                                                 buildFeatureRenderParameters(0.5,
+                                                                              true),
+                                                 new FeatureRenderClipParameters(),
+                                                 buildFeatureExtractionParameters(),
+                                                 buildFeatureMatchDerivation(MatchFilter.FilterType.SINGLE_SET,
+                                                                             150,
+                                                                             ModelType.TRANSLATION),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
                                                  null));
@@ -299,10 +357,10 @@ public class MFOVAsTileParameters
         return new MatchRunParameters("crossMfovAsTileRun",
                                       buildMatchCommonParameters(10),
                                       buildTilePairDerivationParameters(0.1, 1, true),
-                                      matchStageParametersList);
+                                      allStageParametersList.subList(0, passCount));
     }
 
-    private static MatchCommonParameters buildMatchCommonParameters(final int maxPairsPerStackBatch) {
+    public static MatchCommonParameters buildMatchCommonParameters(final int maxPairsPerStackBatch) {
         final MatchCommonParameters matchCommon = new MatchCommonParameters();
         matchCommon.maxPairsPerStackBatch = maxPairsPerStackBatch;
         matchCommon.featureStorage.maxFeatureSourceCacheGb = 6;
@@ -310,9 +368,9 @@ public class MFOVAsTileParameters
         return matchCommon;
     }
 
-    private static TilePairDerivationParameters buildTilePairDerivationParameters(final double xyNeighborFactor,
-                                                                                  final int zNeighborDistance,
-                                                                                  final boolean excludeSameLayerNeighbors) {
+    public static TilePairDerivationParameters buildTilePairDerivationParameters(final double xyNeighborFactor,
+                                                                                 final int zNeighborDistance,
+                                                                                 final boolean excludeSameLayerNeighbors) {
         final TilePairDerivationParameters tilePairDerivation = new TilePairDerivationParameters();
         tilePairDerivation.xyNeighborFactor = xyNeighborFactor;
         tilePairDerivation.useRowColPositions = false;
@@ -326,15 +384,16 @@ public class MFOVAsTileParameters
         return tilePairDerivation;
     }
 
-    private static FeatureRenderParameters buildFeatureRenderParameters(final double renderScale) {
+    public static FeatureRenderParameters buildFeatureRenderParameters(final double renderScale,
+                                                                       final boolean renderWithFilter) {
         final FeatureRenderParameters featureRender = new FeatureRenderParameters();
         featureRender.renderScale = renderScale;
-        featureRender.renderWithFilter = true;
+        featureRender.renderWithFilter = renderWithFilter;
         featureRender.renderWithoutMask = false;
         return featureRender;
     }
 
-    private static FeatureExtractionParameters buildFeatureExtractionParameters() {
+    public static FeatureExtractionParameters buildFeatureExtractionParameters() {
         final FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
         featureExtraction.fdSize = 4;
         featureExtraction.maxScale = 1.0;
@@ -343,9 +402,11 @@ public class MFOVAsTileParameters
         return featureExtraction;
     }
 
-    private static MatchDerivationParameters buildFeatureMatchDerivation(final int matchMinNumInliers) {
+    public static MatchDerivationParameters buildFeatureMatchDerivation(final MatchFilter.FilterType matchFilterType,
+                                                                        final int matchMinNumInliers,
+                                                                        final ModelType matchModelType) {
         final MatchDerivationParameters featureMatchDerivation = new MatchDerivationParameters();
-        featureMatchDerivation.matchFilter = MatchFilter.FilterType.SINGLE_SET;
+        featureMatchDerivation.matchFilter = matchFilterType;
         featureMatchDerivation.matchFullScaleCoverageRadius = 10.0;
         featureMatchDerivation.matchIterations = 1000;
         featureMatchDerivation.matchMaxEpsilonFullScale = 10.0f;
@@ -353,14 +414,20 @@ public class MFOVAsTileParameters
         featureMatchDerivation.matchMinCoveragePercentage = 0.0;
         featureMatchDerivation.matchMinInlierRatio = 0.0f;
         featureMatchDerivation.matchMinNumInliers = matchMinNumInliers;
-        featureMatchDerivation.matchModelType = ModelType.TRANSLATION;
+        featureMatchDerivation.matchModelType = matchModelType;
         featureMatchDerivation.matchRod = 0.92f;
         return featureMatchDerivation;
     }
 
-    private static GeometricDescriptorAndMatchFilterParameters buildDisabledGeometricDescriptorAndMatch() {
+    public static GeometricDescriptorAndMatchFilterParameters buildDisabledGeometricDescriptorAndMatch() {
         final GeometricDescriptorAndMatchFilterParameters gdParams = new GeometricDescriptorAndMatchFilterParameters();
         gdParams.gdEnabled = false;
         return gdParams;
     }
+
+    /** Number of cross MFOV-as-tile match passes to run when the count is not explicitly specified. */
+    private static final int DEFAULT_CROSS_MATCH_PASS_COUNT = 2;
+
+    /** Number of cross MFOV-as-tile match passes that are defined. */
+    private static final int MAX_CROSS_MATCH_PASS_COUNT = 3;
 }

@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.RenderDataClient;
@@ -35,9 +36,14 @@ public class RenderSetup
 	public int totalTileCount;
 
 	private Bounds bounds;
+	private StackId sourceStackId;
 
 	public Bounds getBounds() {
 		return bounds;
+	}
+
+	public StackId getSourceStackId() {
+		return sourceStackId;
 	}
 
 	public static RenderSetup setupSolve(final AffineBlockSolverSetup parameters) throws IOException {
@@ -78,6 +84,7 @@ public class RenderSetup
 		runParams.totalTileCount = 0;
 
 		final StackMetaData sourceStackMetaData = renderDataClient.getStackMetaData(stack);
+		runParams.sourceStackId = sourceStackMetaData.getStackId();
 
 		// create the target stack if it doesn't exist ...
 		if (targetStack != null) {

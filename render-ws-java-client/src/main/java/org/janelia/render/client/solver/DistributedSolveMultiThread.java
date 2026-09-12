@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import bdv.util.BdvStackSource;
 import mpicbg.models.Affine2D;
-import mpicbg.spim.io.IOFunctions;
+import net.preibisch.legacy.io.IOFunctions;
 import net.imglib2.multithreading.SimpleMultiThreading;
 
 public class DistributedSolveMultiThread extends DistributedSolve

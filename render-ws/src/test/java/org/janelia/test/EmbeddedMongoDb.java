@@ -11,24 +11,21 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import de.flapdoodle.embed.mongo.Command;
-import de.flapdoodle.embed.mongo.MongoImportExecutable;
-import de.flapdoodle.embed.mongo.MongoImportStarter;
-import de.flapdoodle.embed.mongo.MongodExecutable;
-import de.flapdoodle.embed.mongo.MongodProcess;
-import de.flapdoodle.embed.mongo.MongodStarter;
-import de.flapdoodle.embed.mongo.config.Defaults;
-import de.flapdoodle.embed.mongo.config.ImmutableMongoCmdOptions;
-import de.flapdoodle.embed.mongo.config.MongoCmdOptions;
-import de.flapdoodle.embed.mongo.config.MongoImportConfig;
-import de.flapdoodle.embed.mongo.config.MongodConfig;
-import de.flapdoodle.embed.mongo.config.Net;
+import de.flapdoodle.embed.mongo.commands.MongoImportArguments;
+import de.flapdoodle.embed.mongo.commands.MongodArguments;
+import de.flapdoodle.embed.mongo.commands.ServerAddress;
 import de.flapdoodle.embed.mongo.distribution.IFeatureAwareVersion;
 import de.flapdoodle.embed.mongo.distribution.Version;
-import de.flapdoodle.embed.process.config.ImmutableRuntimeConfig;
-import de.flapdoodle.embed.process.config.RuntimeConfig;
-import de.flapdoodle.embed.process.config.io.ProcessOutput;
-import de.flapdoodle.embed.process.runtime.Network;
+import de.flapdoodle.embed.mongo.transitions.ExecutedMongoImportProcess;
+import de.flapdoodle.embed.mongo.transitions.MongoImport;
+import de.flapdoodle.embed.mongo.transitions.Mongod;
+import de.flapdoodle.embed.mongo.transitions.RunningMongodProcess;
+import de.flapdoodle.embed.process.io.ProcessOutput;
+import de.flapdoodle.reverse.StateID;
+import de.flapdoodle.reverse.Transition;
+import de.flapdoodle.reverse.TransitionWalker;
+import de.flapdoodle.reverse.Transitions;
+import de.flapdoodle.reverse.transitions.Start;
 
 /**
  * Manages an embedded mongo database for use in testing.
@@ -39,34 +36,25 @@ import de.flapdoodle.embed.process.runtime.Network;
 public class EmbeddedMongoDb {
 
     private final IFeatureAwareVersion version;
-    private final int port;
-    private final MongodExecutable mongodExecutable;
-    private final MongodProcess mongodProcess;
+    private final TransitionWalker.ReachedState<RunningMongodProcess> runningMongod;
+    private final ServerAddress serverAddress;
     private final MongoClient mongoClient;
     private final MongoDatabase db;
 
-    public EmbeddedMongoDb(final String dbName)
-            throws IOException {
+    public EmbeddedMongoDb(final String dbName) {
 
         this.version = Version.Main.V4_0;
-        this.port = Network.freeServerPort(Network.getLocalHost());
 
-        // use ephemeralForTest storage engine to fix super slow run times on Mac
-        // see https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/issues/166
-        final ImmutableMongoCmdOptions mongoCmdOptions =
-                MongoCmdOptions.builder().storageEngine("ephemeralForTest").build();
+        // flapdoodle picks a free port for us, so ask the running process where it ended up
+        this.runningMongod = SILENT_MONGOD.start(version);
 
-        final MongodConfig mongodConfig = MongodConfig.builder()
-                .version(version)
-                .net(new Net(port, Network.localhostIsIPv6()))
-                .cmdOptions(mongoCmdOptions)
-                .build();
-        
-        this.mongodExecutable = STARTER.prepare(mongodConfig);
+        // mongod is started without --bind_ip, so it only listens on the loopback interface.
+        // Reuse only the port here because the host flapdoodle reports comes from
+        // InetAddress.getLocalHost(), which can be this machine's external name.
+        final int port = runningMongod.current().getServerAddress().getPort();
+        this.serverAddress = ServerAddress.of("localhost", port);
 
-        this.mongodProcess = mongodExecutable.start();
-
-        final ConnectionString connectionString = new ConnectionString("mongodb://localhost:" + port);
+        final ConnectionString connectionString = new ConnectionString("mongodb://" + serverAddress);
         this.mongoClient = MongoClients.create(connectionString);
 
         this.db = mongoClient.getDatabase(dbName);
@@ -82,19 +70,14 @@ public class EmbeddedMongoDb {
                                  final Boolean upsert,
                                  final Boolean drop) throws IOException {
 
-        final MongoImportConfig mongoImportConfig = MongoImportConfig.builder()
-                .version(version)
-                .net(new Net(port, Network.localhostIsIPv6()))
+        final MongoImportArguments importArguments = MongoImportArguments.builder()
                 .databaseName(db.getName())
                 .collectionName(collectionName)
-                .isUpsertDocuments(upsert)
-                .isDropCollection(drop)
-                .isJsonArray(jsonArray)
                 .importFile(jsonFile.getAbsolutePath())
+                .isJsonArray(jsonArray)
+                .upsertDocuments(upsert)
+                .dropCollection(drop)
                 .build();
-
-        final MongoImportExecutable mongoImportExecutable =
-                MongoImportStarter.getInstance(MONGO_IMPORT_RUNTIME_CONFIG).prepare(mongoImportConfig);
 
         // Occasionally during GitHub Action builds, imports will fail with
         //   java.io.IOException: error=26, Text file busy
@@ -110,11 +93,9 @@ public class EmbeddedMongoDb {
         for (int i = 0; i < maxRetries; i++) {
             try {
                 // to see flapdoodle files on Mac: ls -al /var/folders/*/*/*/*mongo*
-                // uncomment following line if flapdoodle raises "could not run process" error after debugger exit
-                // mongoImportExecutable.stop();
-                mongoImportExecutable.start();
+                runImport(importArguments);
                 i = maxRetries; // break out of retry loop upon success
-            } catch (final IOException e) {
+            } catch (final RuntimeException e) {
                 final int numberOfAttempts = i + 1;
                 if (numberOfAttempts < maxRetries) {
                     LOG.warn("importCollection: sleeping {}ms before next retry after catching exception {}",
@@ -129,8 +110,30 @@ public class EmbeddedMongoDb {
                 } else {
                     LOG.warn("importCollection: failed {} times to import {}, giving up and re-raising exception",
                              numberOfAttempts, jsonFile);
-                    throw e;
+                    throw new IOException("failed to import " + jsonFile + " into " + collectionName, e);
                 }
+            }
+        }
+    }
+
+    /**
+     * Runs mongoimport against the running mongod, raising a {@link RuntimeException} if it fails.
+     * The import process is started and stopped within this method so that its executable is released
+     * before the next retry (see the retry comments in {@link #importCollection}).
+     */
+    private void runImport(final MongoImportArguments importArguments) {
+
+        final Transitions importTransitions = SILENT_MONGO_IMPORT
+                .transitions(version)
+                .replace(Start.to(MongoImportArguments.class).initializedWith(importArguments))
+                .addAll(Start.to(ServerAddress.class).initializedWith(serverAddress));
+
+        try (final TransitionWalker.ReachedState<ExecutedMongoImportProcess> executed =
+                     importTransitions.walker().initState(StateID.of(ExecutedMongoImportProcess.class))) {
+
+            final int returnCode = executed.current().returnCode();
+            if (returnCode != 0) {
+                throw new IllegalStateException("mongoimport exited with return code " + returnCode);
             }
         }
     }
@@ -144,31 +147,49 @@ public class EmbeddedMongoDb {
         }
 
         try {
-            mongodProcess.stop();
+            mongoClient.close();
         } catch (final Throwable t) {
-            LOG.warn("failed to stop mongod process", t);
+            LOG.warn("failed to close mongo client", t);
         }
 
         try {
-            mongodExecutable.stop();
+            runningMongod.close();
         } catch (final Throwable t) {
-            LOG.warn("failed to stop mongod executable", t);
+            LOG.warn("failed to stop mongod process", t);
         }
 
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(EmbeddedMongoDb.class);
 
-    private static final RuntimeConfig MONGO_IMPORT_RUNTIME_CONFIG = ImmutableRuntimeConfig.builder()
-            .processOutput(ProcessOutput.silent())
-            .artifactStore(Defaults.extractedArtifactStoreFor(Command.MongoImport))
-            .isDaemonProcess(false) // make sure import processes are not daemons to avoid shutdown issues (see https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/issues/191 )
-            .build();
+    /**
+     * Mongod configured to keep its process output off the console
+     * (the flapdoodle 4.x replacement for the 3.x silent RuntimeConfig).
+     */
+    private static final Mongod SILENT_MONGOD = new Mongod() {
+        @Override
+        public Transition<MongodArguments> mongodArguments() {
+            // use ephemeralForTest storage engine to fix super slow run times on Mac
+            // see https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/issues/166
+            return Start.to(MongodArguments.class)
+                    .initializedWith(MongodArguments.defaults().withStorageEngine("ephemeralForTest"));
+        }
+        @Override
+        public Transition<ProcessOutput> processOutput() {
+            return Start.to(ProcessOutput.class).initializedWith(ProcessOutput.silent());
+        }
+    };
 
-    private static final RuntimeConfig MONGOD_RUNTIME_CONFIG = ImmutableRuntimeConfig.builder()
-            .processOutput(ProcessOutput.silent())
-            .artifactStore(Defaults.extractedArtifactStoreFor(Command.MongoD))
-            .build();
-
-    private static final MongodStarter STARTER = MongodStarter.getInstance(MONGOD_RUNTIME_CONFIG);
+    /**
+     * MongoImport configured to keep its process output off the console.
+     * Import processes are not daemons (flapdoodle's default ProcessConfig sets daemonProcess to false),
+     * which avoids the shutdown issues described in
+     * <a href="https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/issues/191">flapdoodle issue 191</a> .
+     */
+    private static final MongoImport SILENT_MONGO_IMPORT = new MongoImport() {
+        @Override
+        public Transition<ProcessOutput> processOutput() {
+            return Start.to(ProcessOutput.class).initializedWith(ProcessOutput.silent());
+        }
+    };
 }

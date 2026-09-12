@@ -17,6 +17,7 @@ import mpicbg.models.TileUtil;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreator;
 import org.janelia.render.client.newsolver.setup.DistributedSolveParameters;
@@ -33,10 +34,13 @@ public class GlobalSolver<G extends Model<G>, R> {
 	final private int maxIterations;
 	final private int numThreads;
 
+	final private String sourceStackDevString;
+
 	public GlobalSolver(
 			final G globalModel,
 			final SameTileMatchCreator<R> sameTileMatchCreator,
-			final DistributedSolveParameters parameters
+			final DistributedSolveParameters parameters,
+			final StackId sourceStackId
 	) {
 		this.globalModel = globalModel;
 		this.sameTileMatchCreator = sameTileMatchCreator;
@@ -44,6 +48,7 @@ public class GlobalSolver<G extends Model<G>, R> {
 		this.maxAllowedError = parameters.maxAllowedErrorGlobal;
 		this.maxIterations = parameters.maxIterationsGlobal;
 		this.numThreads = parameters.threadsGlobal;
+		this.sourceStackDevString = sourceStackId.toDevString();
 	}
 
 	public HashMap<BlockData<R, ?>, Tile<G>> globalSolve(
@@ -55,14 +60,15 @@ public class GlobalSolver<G extends Model<G>, R> {
 			blockToTile.put(block, new Tile<>(globalModel.copy()));
 		}
 
-		LOG.info("globalSolve: solving {} items", blocks.size());
+		LOG.info("globalSolve: {}, solving {} items",
+		         sourceStackDevString, blocks.size());
 		final Set<? extends BlockData<R, ?>> otherBlocks = new HashSet<>(blocks);
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
 		final Set<BlockData<R, ?>> matchedSolveItems = new HashSet<>();
 
 		for (final BlockData<R, ?> solveItemA : blocks) {
-			LOG.info("globalSolve: solveItemA is {}", solveItemA);
+			LOG.info("globalSolve: {}, solveItemA is {}", sourceStackDevString, solveItemA);
 
 			final ResultContainer<R> resultsA = solveItemA.getResults();
 			otherBlocks.remove(solveItemA);
@@ -71,7 +77,7 @@ public class GlobalSolver<G extends Model<G>, R> {
 			final ResolvedTileSpecCollection tileSpecs = solveItemA.rtsc();
 
 			for (final BlockData<R, ?> solveItemB : otherBlocks) {
-				LOG.info("globalSolve: solveItemB is {}", solveItemB);
+				LOG.info("globalSolve: {}, solveItemB is {}", sourceStackDevString, solveItemB);
 
 				final ResultContainer<R> resultsB = solveItemB.getResults();
 				final Set<String> commonTileIds = getCommonTileIds(solveItemA, solveItemB);
@@ -84,23 +90,25 @@ public class GlobalSolver<G extends Model<G>, R> {
 					final R modelB = resultsB.getModelFor(tileId);
 					if (modelA == null) {
 						throw new IllegalArgumentException("model A is missing for tile " + tileId + " in block " +
-														   solveItemA.toDetailsString());
+														   solveItemA.toDetailsString() + " of " + sourceStackDevString);
 					} else if (modelB == null) {
 						throw new IllegalArgumentException("model B is missing for tile " + tileId + " in block " +
-														   solveItemB.toDetailsString());
+														   solveItemB.toDetailsString() + " of " + sourceStackDevString);
 					}
 					sameTileMatchCreator.addMatches(tileSpecAB, modelA, modelB, solveItemA, solveItemB, matchesAtoB);
 				}
 
 				if (matchesAtoB.isEmpty()) {
 
-					LOG.info("globalSolve: no matches found between {} with {} and {} with {}",
+					LOG.info("globalSolve: {}, no matches found between {} with {} and {} with {}",
+					         sourceStackDevString,
 							 solveItemA, resultsA.toTileSummaryString(),
 							 solveItemB, resultsB.toTileSummaryString());
 
 				} else {
 
-					LOG.info("globalSolve: found {} commonTileIds and {} matches between {} and {}",
+					LOG.info("globalSolve: {}, found {} commonTileIds and {} matches between {} and {}",
+					         sourceStackDevString,
 							 commonTileIds.size(), matchesAtoB.size(), solveItemA, solveItemB);
 
 					matchedSolveItems.add(solveItemA);
@@ -123,16 +131,19 @@ public class GlobalSolver<G extends Model<G>, R> {
 
 		for (final BlockData<R, ?> block : blocks) {
 			if (! matchedSolveItems.contains(block)) {
-				throw new IllegalStateException("no other blocks are matched with " + block.toDetailsString());
+				throw new IllegalStateException("no other blocks are matched with " + block.toDetailsString() +
+											   " when solving " + blocks.size() + " blocks in " + sourceStackDevString);
 			}
 		}
 
-		LOG.info("globalSolve: launching Pre-Align, tileConfigBlocks has {} tiles and {} fixed tiles",
-				  tileConfigBlocks.getTiles().size(), tileConfigBlocks.getFixedTiles().size());
+		LOG.info("globalSolve: {}, launching Pre-Align, tileConfigBlocks has {} tiles and {} fixed tiles",
+		         sourceStackDevString,
+				 tileConfigBlocks.getTiles().size(),
+				 tileConfigBlocks.getFixedTiles().size());
 
 		tileConfigBlocks.preAlign();
 
-		LOG.info("globalSolve: Optimizing ... ");
+		LOG.info("globalSolve: {}, Optimizing ... ", sourceStackDevString);
 		final float damp = 1.0f;
 		TileUtil.optimizeConcurrently(
 				new ErrorStatistic(maxPlateauWidth + 1),

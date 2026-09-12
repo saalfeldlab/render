@@ -43,9 +43,19 @@ public class LinearIntensityMap8BitFilter
     public void after(final LinearIntensityMap8BitFilter otherFilter) {
         final double[][] otherCoefficients = otherFilter.getCoefficients();
 
+        // A 1x1 (single region) filter is spatially constant, so it is broadcast across all regions
+        // of this filter. Otherwise the two filters must share the same region grid.
+        final boolean broadcastOther = (otherCoefficients.length == 1) && (coefficients.length > 1);
+        if (! broadcastOther && (coefficients.length != otherCoefficients.length)) {
+            throw new IllegalArgumentException(
+                    "cannot merge filters with incompatible region counts: this filter has " +
+                    coefficients.length + " region(s) while the other filter has " +
+                    otherCoefficients.length + " region(s)");
+        }
+
         for (int i = 0; i < coefficients.length; ++i) {
             final double[] ab = coefficients[i];
-            final double[] otherAb = otherCoefficients[i];
+            final double[] otherAb = broadcastOther ? otherCoefficients[0] : otherCoefficients[i];
 
             // chaining of two linear functions of the form y = ax + b
             ab[1] = ab[1] + ab[0] * otherAb[1];

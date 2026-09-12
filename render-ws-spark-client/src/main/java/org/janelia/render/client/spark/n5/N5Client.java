@@ -40,7 +40,7 @@ import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
+import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -272,7 +272,6 @@ public class N5Client {
         final Bounds defaultBounds = stackMetaData.getStats().getStackBounds();
         final Bounds boundsForRun = parameters.getBoundsForRun(defaultBounds,
                                                                thicknessCorrectionData);
-
         long[] min = {
                 boundsForRun.getMinX().longValue(),
                 boundsForRun.getMinY().longValue(),
@@ -294,6 +293,13 @@ public class N5Client {
             dimensions = new long[] { dimensions[0], dimensions[1] };
             blockSize = new int[] { blockSize[0], blockSize[1] };
             viewStackCommandOffsets = min[0] + "," + min[1];
+        } else {
+            final int stackZLayerCount = Double.valueOf(boundsForRun.getDeltaZ() + 1).intValue();
+            if (stackZLayerCount < blockSize[2]) {
+                LOG.info("run: changing block z size from {} to {} so that it matches the stack z layer count",
+                         blockSize[2], stackZLayerCount);
+                blockSize[2] = stackZLayerCount;
+            }
         }
 
         LOG.info("run: view stack command is n5_view.sh -i {} -d {} -o {}",

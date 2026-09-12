@@ -1,8 +1,5 @@
 package org.janelia.render.client.newsolver.solvers.intensity;
 
-import ij.process.ColorProcessor;
-import ij.process.FloatProcessor;
-
 import java.awt.Rectangle;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -12,9 +9,12 @@ import java.util.List;
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 
+import net.imglib2.Cursor;
+import net.imglib2.type.numeric.integer.IntType;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.view.Views;
+
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.intensityadjust.intensity.Render;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,26 +28,53 @@ import net.imglib2.util.StopWatch;
  * partially overlapping) can be downscaled differently from tiles in different
  * layers (i.e., almost completely overlapping).
  * Also, computation of averages for a tile is done here.
+ * <p>
+ * Caching is done for each scale (same-layer vs. cross-layer) independently, unless
+ * the scales are the same, in which case the same cache is shared for both.
  */
 class IntensityMatcher {
-	final private MatchFilter filter;
-	final private double sameLayerScale;
-	final private double crossLayerScale;
+	// separate filters per layer relationship: a per-pixel cutoff (when configured) only applies to cross-layer pairs
+	final private MatchFilter sameLayerFilter;
+	final private MatchFilter crossLayerFilter;
 	final private int numCoefficients;
-	final int meshResolution;
-	final ImageProcessorCache imageProcessorCache;
+	final private TileRenderer sameLayerRenderer;
+	final private TileRenderer crossLayerRenderer;
 
 	public IntensityMatcher(
-			final MatchFilter filter,
+			final MatchFilter sameLayerFilter,
+			final MatchFilter crossLayerFilter,
 			final FIBSEMIntensityCorrectionParameters<?> parameters,
 			final int meshResolution,
-			final ImageProcessorCache imageProcessorCache) {
-		this.filter = filter;
-		this.sameLayerScale = parameters.renderScale();
-		this.crossLayerScale = parameters.crossLayerRenderScale();
+			final long maximumCachedKilobytes) {
+		this.sameLayerFilter = sameLayerFilter;
+		this.crossLayerFilter = crossLayerFilter;
 		this.numCoefficients = parameters.numCoefficients();
-		this.meshResolution = meshResolution;
-		this.imageProcessorCache = imageProcessorCache;
+		final boolean cacheRenderedTiles = parameters.cacheRenderedTiles();
+
+		final double sameLayerScale = parameters.renderScale();
+		this.sameLayerRenderer = createRenderer(sameLayerScale, meshResolution, maximumCachedKilobytes, cacheRenderedTiles);
+
+		// Share rendering effort if scale is the same
+		final double crossLayerScale = parameters.crossLayerRenderScale();
+		if (sameLayerScale == crossLayerScale) {
+			this.crossLayerRenderer = sameLayerRenderer;
+		} else {
+			this.crossLayerRenderer = createRenderer(crossLayerScale, meshResolution, maximumCachedKilobytes, cacheRenderedTiles);
+		}
+	}
+
+	/**
+	 * Create the configured renderer for the given scale. {@link CachedTileRenderer} renders each tile's whole
+	 * footprint once and crops overlaps from it (less compute, more memory); {@link TightBoxTileRenderer} caches
+	 * only the downsampled source and re-renders each overlap box (more compute, less memory).
+	 */
+	private TileRenderer createRenderer(final double scale,
+										final int meshResolution,
+										final long maximumCachedKilobytes,
+										final boolean cacheRenderedTiles) {
+		return cacheRenderedTiles
+				? new CachedTileRenderer(numCoefficients, scale, meshResolution, maximumCachedKilobytes)
+				: new TightBoxTileRenderer(numCoefficients, scale, meshResolution, maximumCachedKilobytes);
 	}
 
 	public void match(final String renderStack,
@@ -57,44 +84,40 @@ class IntensityMatcher {
 
 		final StopWatch stopWatch = StopWatch.createAndStart();
 
-		final double scale = (p1.zDistanceFrom(p2) == 0) ? sameLayerScale : crossLayerScale;
+		final boolean crossLayer = (p1.zDistanceFrom(p2) != 0);
+		final TileRenderer renderer = crossLayer ? crossLayerRenderer : sameLayerRenderer;
+		final MatchFilter filter = crossLayer ? crossLayerFilter : sameLayerFilter;
 		final Rectangle box = computeIntersection(p1, p2);
-		final int w = numberOfPixels(box.width, scale);
-		final int h = numberOfPixels(box.height, scale);
-		final int n = w * h;
 
-		final FloatProcessor pixels1 = new FloatProcessor(w, h);
-		final FloatProcessor weights1 = new FloatProcessor(w, h);
-		final ColorProcessor subTiles1 = new ColorProcessor(w, h);
-		final FloatProcessor pixels2 = new FloatProcessor(w, h);
-		final FloatProcessor weights2 = new FloatProcessor(w, h);
-		final ColorProcessor subTiles2 = new ColorProcessor(w, h);
-
-		Render.render(p1, numCoefficients, numCoefficients, pixels1, weights1, subTiles1, box.x, box.y, scale, meshResolution, imageProcessorCache);
-		Render.render(p2, numCoefficients, numCoefficients, pixels2, weights2, subTiles2, box.x, box.y, scale, meshResolution, imageProcessorCache);
+		// Both tiles are rendered for the same region by the same renderer, so the two sets of rasters
+		// share dimensions and their flat iteration orders refer to the same world locations.
+		final RenderedRegion r1 = renderer.render(p1, box);
+		final RenderedRegion r2 = renderer.render(p2, box);
+		final int n = r1.getWidth() * r1.getHeight();
 
 		// Generate a matrix of all coefficients in p1 to all coefficients in p2 to store matches
 		final int nCoefficientTiles = numCoefficients * numCoefficients;
-		final List<FlatIntensityMatches> pairwiseCoefficients = getPairwiseCoefficients(w * h, nCoefficientTiles);
+		final List<FlatIntensityMatches> pairwiseCoefficients = getPairwiseCoefficients(n, nCoefficientTiles);
 
-		// Iterate over all pixels and feed matches into the match matrix
-		int label1, label2 = 0;
-		float weight1 = 0, weight2 = 0;
-		for (int k = 0; k < n; ++k) {
-			// Lazily check if it pays to create a match
-			final boolean matchCanContribute = (label1 = subTiles1.get(k)) > 0
-					&& (label2 = subTiles2.get(k)) > 0
-					&& (weight1 = weights1.getf(k)) > 0
-					&& (weight2 = weights2.getf(k)) > 0;
+		// Iterate over all pixels in lockstep and feed matches into the match matrix
+		final Cursor<IntType> label1Cursor = Views.flatIterable(r1.coefficients).cursor();
+		final Cursor<IntType> label2Cursor = Views.flatIterable(r2.coefficients).cursor();
+		final Cursor<FloatType> weight1Cursor = Views.flatIterable(r1.weight).cursor();
+		final Cursor<FloatType> weight2Cursor = Views.flatIterable(r2.weight).cursor();
+		final Cursor<FloatType> pixel1Cursor = Views.flatIterable(r1.image).cursor();
+		final Cursor<FloatType> pixel2Cursor = Views.flatIterable(r2.image).cursor();
 
-			if (matchCanContribute) {
-				final double p = pixels1.getf(k);
-				final double q = pixels2.getf(k);
+		while (label1Cursor.hasNext()) {
+			final int label1 = label1Cursor.next().get();
+			final int label2 = label2Cursor.next().get();
+			final float weight1 = weight1Cursor.next().get();
+			final float weight2 = weight2Cursor.next().get();
+			final float p = pixel1Cursor.next().get();
+			final float q = pixel2Cursor.next().get();
 
+			if (label1 > 0 && label2 > 0 && weight1 > 0 && weight2 > 0) {
 				// First sub-tile label is 1 -> adjust to 0-based indexing
-				final int i = label1 - 1;
-				final int j = label2 - 1;
-				final FlatIntensityMatches matches = pairwiseCoefficients.get(i * nCoefficientTiles + j);
+				final FlatIntensityMatches matches = pairwiseCoefficients.get((label1 - 1) * nCoefficientTiles + (label2 - 1));
 				matches.put(p, q, weight1 * weight2);
 			}
 		}
@@ -156,34 +179,23 @@ class IntensityMatcher {
 		return coefficients;
 	}
 
-	private static int numberOfPixels(final int length, final double scale) {
-		return (int) Math.round(length * scale);
-	}
-
 	List<Double> computeAverages(final TileSpec tile) {
 
 		final StopWatch stopWatch = StopWatch.createAndStart();
-		final Rectangle box = boundingBox(tile);
 
-		final int w = numberOfPixels(box.width, sameLayerScale);
-		final int h = numberOfPixels(box.height, sameLayerScale);
-		final int n = w * h;
-
-		final FloatProcessor pixels = new FloatProcessor(w, h);
-		final FloatProcessor weights = new FloatProcessor(w, h);
-		final ColorProcessor subTiles = new ColorProcessor(w, h);
-
-		Render.render(tile, numCoefficients, numCoefficients, pixels, weights, subTiles, box.x, box.y, sameLayerScale, meshResolution, imageProcessorCache);
+		final RenderedRegion rendered = sameLayerRenderer.render(tile, boundingBox(tile));
 
 		final float[] averages = new float[numCoefficients * numCoefficients];
 		final int[] counts = new int[numCoefficients * numCoefficients];
 
-		for (int i = 0; i < n; ++i) {
-			final int label = subTiles.get(i);
+		final Cursor<IntType> labelCursor = Views.flatIterable(rendered.coefficients).cursor();
+		final Cursor<FloatType> pixelCursor = Views.flatIterable(rendered.image).cursor();
+		while (labelCursor.hasNext()) {
+			final int label = labelCursor.next().get();
+			final float p = pixelCursor.next().get();
 
 			/* first label is 1 */
 			if (label > 0) {
-				final float p = pixels.getf(i);
 				averages[label - 1] += p;
 				counts[label - 1]++;
 			}
