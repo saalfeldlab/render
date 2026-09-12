@@ -14,8 +14,8 @@ import org.janelia.saalfeldlab.n5.KeyValueAccess;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.googlecloud.GoogleCloudStorageKeyValueAccess;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
-import org.janelia.saalfeldlab.n5.precomputed.N5PrecomputedReader;
-import org.janelia.saalfeldlab.n5.precomputed.PrecomputedKeyValueReader;
+import org.janelia.n5.precomputed.N5PrecomputedReader;
+import org.janelia.n5.precomputed.PrecomputedKeyValueReader;
 
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;

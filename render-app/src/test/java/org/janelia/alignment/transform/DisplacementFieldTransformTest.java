@@ -4,7 +4,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 
 import org.janelia.saalfeldlab.n5.DataType;
-import org.janelia.saalfeldlab.n5.precomputed.PrecomputedTestVolumes;
+import org.janelia.n5.precomputed.PrecomputedTestVolumes;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
