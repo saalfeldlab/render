@@ -3,9 +3,11 @@ package org.janelia.render.client.multisem;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Serializable;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -16,8 +18,8 @@ import org.janelia.alignment.util.FileUtil;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudUtils;
 import org.janelia.saalfeldlab.n5.KeyValueAccess;
-import org.janelia.saalfeldlab.n5.LockedChannel;
 import org.janelia.saalfeldlab.n5.googlecloud.GoogleCloudStorageKeyValueAccess;
+import org.janelia.saalfeldlab.n5.readdata.VolatileReadData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -157,9 +159,9 @@ public class PeakScanData
         //       scheme-less path as a bucket name and drops it
         //       (so /library/peak_scan.json would become just peak_scan.json).
 
-        // NOTE: the channel must be closed along with the reader to release everything it tracks
-        try (final LockedChannel lockedChannel = keyValueAccess.lockForReading(location);
-             final Reader reader = lockedChannel.newReader()) {
+        // NOTE: the read data must be closed along with the reader to release everything it tracks
+        try (final VolatileReadData readData = keyValueAccess.createReadData(location);
+             final Reader reader = new InputStreamReader(readData.inputStream(), StandardCharsets.UTF_8)) {
             return JSON_HELPER.fromJson(reader);
         }
     }
