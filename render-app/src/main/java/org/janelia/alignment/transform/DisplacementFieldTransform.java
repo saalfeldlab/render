@@ -20,13 +20,14 @@ import org.janelia.n5.precomputed.PrecomputedKeyValueReader;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.gson.GsonBuilder;
+import org.janelia.alignment.util.QueryKeyValueParameters;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -302,13 +303,22 @@ public class DisplacementFieldTransform
         }
 
         final String parsedSourceUri = trimmed.substring(0, queryStart);
-        final Map<String, String> params = parseQueryParameters(trimmed.substring(queryStart + 1), data);
+        final QueryKeyValueParameters params = new QueryKeyValueParameters(trimmed.substring(queryStart + 1), data);
+        params.validateKeys(VALID_PARAMETERS);
+
+        final Optional<double[]> parsedOffset = params.getDoubleArray("offset");
+        if (parsedOffset.isPresent() && (parsedOffset.get().length != 2)) {
+            throw new IllegalArgumentException(
+                    "parameter 'offset' must be two comma separated numbers, but was '" +
+                    params.getString("offset").orElseThrow() + "' in transform data '" + data + "'");
+        }
+        final double[] offset = parsedOffset.orElse(new double[] { DEFAULT_OFFSET, DEFAULT_OFFSET });
 
         init(parsedSourceUri,
-             parseIntParameter(params, "z", data),
-             parseDoubleParameter(params, "scale", DEFAULT_SCALE, data),
-             parseDoublePairParameter(params, "offset", DEFAULT_OFFSET, data),
-             parseDoubleParameter(params, "vectorScale", DEFAULT_VECTOR_SCALE, data));
+             params.getInt("z").orElseThrow(() -> new IllegalArgumentException("missing required parameter 'z' in transform data '" + data + "'")),
+             params.getDouble("scale").orElse(DEFAULT_SCALE),
+             offset,
+             params.getDouble("vectorScale").orElse(DEFAULT_VECTOR_SCALE));
     }
 
     @Override
@@ -354,88 +364,4 @@ public class DisplacementFieldTransform
     private static final int MAX_INVERSION_ITERATIONS = 20;
 
     private static final Set<String> VALID_PARAMETERS = Set.of("z", "scale", "offset", "vectorScale");
-
-    private static Map<String, String> parseQueryParameters(final String query, final String data) {
-        final Map<String, String> params = new HashMap<>();
-        for (final String pair : query.split("&")) {
-            if (pair.isEmpty()) {
-                continue;
-            }
-            final int eq = pair.indexOf('=');
-            if (eq < 0) {
-                throw new IllegalArgumentException(
-                        "invalid query parameter '" + pair + "' in transform data '" + data + "'");
-            }
-            final String key = pair.substring(0, eq);
-            if (! VALID_PARAMETERS.contains(key)) {
-                // Everything but z is optional, so a typo would otherwise silently use the default.
-                throw new IllegalArgumentException(
-                        "unknown query parameter '" + key + "' in transform data '" + data +
-                        "'; supported parameters are " + VALID_PARAMETERS);
-            }
-            params.put(key, pair.substring(eq + 1));
-        }
-        return params;
-    }
-
-    private static int parseIntParameter(final Map<String, String> params, final String key, final String data) {
-        final String value = requireParameter(params, key, data);
-        try {
-            return Integer.parseInt(value);
-        } catch (final NumberFormatException e) {
-            throw new IllegalArgumentException(
-                    "invalid integer value '" + value + "' for parameter '" + key +
-                    "' in transform data '" + data + "'", e);
-        }
-    }
-
-    private static double parseDoubleParameter(final Map<String, String> params,
-                                               final String key,
-                                               final double defaultValue,
-                                               final String data) {
-        final String value = params.get(key);
-        if (value == null) {
-            return defaultValue;
-        }
-        try {
-            return Double.parseDouble(value);
-        } catch (final NumberFormatException e) {
-            throw new IllegalArgumentException(
-                    "invalid double value '" + value + "' for parameter '" + key +
-                    "' in transform data '" + data + "'", e);
-        }
-    }
-
-    /** Parses a {@code key=<x>,<y>} pair; both components fall back to {@code defaultValue} if the key is absent. */
-    private static double[] parseDoublePairParameter(final Map<String, String> params,
-                                                     final String key,
-                                                     final double defaultValue,
-                                                     final String data) {
-        final String value = params.get(key);
-        if (value == null) {
-            return new double[] { defaultValue, defaultValue };
-        }
-        final String[] components = value.split(",");
-        if (components.length != 2) {
-            throw new IllegalArgumentException(
-                    "parameter '" + key + "' must be two comma separated numbers, but was '" + value +
-                    "' in transform data '" + data + "'");
-        }
-        try {
-            return new double[] { Double.parseDouble(components[0]), Double.parseDouble(components[1]) };
-        } catch (final NumberFormatException e) {
-            throw new IllegalArgumentException(
-                    "invalid double value in parameter '" + key + "=" + value +
-                    "' in transform data '" + data + "'", e);
-        }
-    }
-
-    private static String requireParameter(final Map<String, String> params, final String key, final String data) {
-        final String value = params.get(key);
-        if (value == null) {
-            throw new IllegalArgumentException(
-                    "missing required parameter '" + key + "' in transform data '" + data + "'");
-        }
-        return value;
-    }
 }
