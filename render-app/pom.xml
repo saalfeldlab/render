@@ -164,6 +164,28 @@
             <artifactId>n5-hdf5</artifactId>
         </dependency>
 
+        <!-- n5-universe aggregates the n5 backends (filesystem, zarr, aws-s3, google-cloud, hdf5, blosc).  Managed by pom-scijava. -->
+        <dependency>
+            <groupId>org.janelia.saalfeldlab</groupId>
+            <artifactId>n5-universe</artifactId>
+        </dependency>
+
+        <!-- Neuroglancer-precomputed backend used by DisplacementFieldTransform to read SOFIMA warp fields. -->
+        <dependency>
+            <groupId>org.janelia</groupId>
+            <artifactId>n5-ng-precomputed</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+
+        <!-- PrecomputedTestVolumes writes tiny precomputed volumes; reused by DisplacementFieldTransformTest. -->
+        <dependency>
+            <groupId>org.janelia</groupId>
+            <artifactId>n5-ng-precomputed</artifactId>
+            <version>0.1.0</version>
+            <classifier>tests</classifier>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Version comes from the jackson.version property in the root pom, which keeps jackson-databind
              in sync with jackson-core, jackson-annotations and the jaxrs provider. -->
         <dependency>
