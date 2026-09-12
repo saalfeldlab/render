@@ -33,10 +33,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
- * Transform that reads a dense displacement (translation vector) field from a file on disk and moves each queried
- * location by the interpolated vector. Since the field is a pull map (see {@link #extractAndTransform}), the vector
- * belongs to the target location, so applying the transform means inverting the field, which {@link #applyInPlace}
- * does by fixed-point iteration.
+ * Moves each queried location by a displacement vector interpolated from a field on disk. The field is a pull
+ * map (see {@link #extractAndTransform}), so applying it means inverting the field, done in {@link #applyInPlace}
+ * by fixed-point iteration.
  */
 public class DisplacementFieldTransform
         implements CoordinateTransform {
@@ -104,16 +103,10 @@ public class DisplacementFieldTransform
 		this.offset = offset;
 		this.vectorScale = vectorScale;
 
-		/* Load displacement field. Currently, this is tailored to output from SOFIMA for multi-sem acquisitions,
-		 * stored as a Neuroglancer precomputed volume and read through the n5-ng-precomputed backend.
-		 * - Layout is [x,y,z,channel]; channel=0 is X vectors, channel=1 is Y vectors
-		 * - Precomputed raw is column-major [x,y,z,channel], matching N5/ImgLib2, so (unlike the Zarr
-		 *   backend) no XY axis reversal is performed: dim 0 is X, dim 1 is Y
-		 */
+		// SOFIMA output as a Neuroglancer precomputed volume, layout [x,y,z,channel], channel 0/1 = X/Y vectors.
 		final RandomAccessibleInterval<FloatType> fieldRaw = openRawField(fieldSourceUri);
 
-		// Out-of-range x and y are handled by the mirrored extension in extractAndTransform, but an out-of-range
-		// z would read outside the cached image, which is undefined rather than merely inaccurate.
+		// x/y out of range is handled by the mirrored extension in extractAndTransform; z is not, so check it here.
 		if ((fieldZIndex < 0) || (fieldZIndex >= fieldRaw.dimension(2))) {
 			throw new IllegalArgumentException(
 					"z " + fieldZIndex + " is outside the z range [0, " + fieldRaw.dimension(2) +
@@ -125,12 +118,9 @@ public class DisplacementFieldTransform
 	}
 
 	/**
-	 * Cache of raw (scale- and z-independent) displacement fields keyed by source URI. A single tile spec resolves
-	 * its transform once per {@code getTransformList()} call (with no per-spec instance caching), so importing or
-	 * rendering a layer would otherwise re-open the reader and re-read chunks once per tile. The cached value is the
-	 * lazy {@link N5Utils#open} {@code CachedCellImg}: reader open + chunk reads happen once per field and are then
-	 * shared across every tile and z-slice. Per-instance accessors are still built fresh in
-	 * {@link #extractAndTransform} (imglib2 accessors are not thread safe); only the underlying chunk cache is shared.
+	 * Cache of raw fields keyed by source URI, so a layer's tiles share one reader and chunk cache instead of each
+	 * re-opening it. Per-instance accessors are still built fresh in {@link #extractAndTransform} since imglib2
+	 * accessors aren't thread-safe.
 	 */
 	private static final Map<String, RandomAccessibleInterval<FloatType>> RAW_FIELD_CACHE = new ConcurrentHashMap<>();
 
@@ -143,19 +133,11 @@ public class DisplacementFieldTransform
 	}
 
 	/**
-	 * Opens a Neuroglancer precomputed field through the N5 API. The URI may be prefixed with
-	 * {@code precomputed://}. {@code gs://} buckets are read anonymously (matching the public warp-field
-	 * bucket); any other scheme (e.g. {@code file://}) is routed through {@link N5Factory}'s key-value access.
-	 *
-	 * <p>This wires the reader up by hand because {@code n5-universe}'s {@code N5Factory} does not yet know
-	 * the precomputed format. Mirrors the {@code n5-ng-precomputed} examples.
-	 *
-	 * <p>Exposed so that clients preparing a field (e.g. {@code ImportSofimaClient}) open it through exactly
-	 * this same path rather than reimplementing the wiring. The field dataset itself lives under the first
-	 * scale key, i.e. {@code reader.list("/")[0]}.
-	 *
-	 * @param  fieldSourceUri  the (optionally {@code precomputed://}-prefixed) container URI.
-	 * @return an {@link N5Reader} over the precomputed container.
+	 * Opens a Neuroglancer precomputed field (optionally {@code precomputed://}-prefixed) through the N5 API.
+	 * Wired up by hand since {@code n5-universe}'s {@code N5Factory} doesn't know the precomputed format yet.
+	 * {@code gs://} buckets are read anonymously; other schemes go through {@link N5Factory}'s key-value access.
+	 * Exposed so field-preparing clients (e.g. {@code ImportSofimaClient}) use the same path. The dataset lives
+	 * under the first scale key, {@code reader.list("/")[0]}.
 	 */
 	public static N5Reader openPrecomputedReader(final String fieldSourceUri) {
 		String uri = fieldSourceUri;
@@ -177,19 +159,13 @@ public class DisplacementFieldTransform
 	}
 
 	/**
-	 * Currently, this is tailored to output from SOFIMA for multi-sem acquisitions.
-	 * <ul>
-	 *   <li>The field is a <b>pull</b> map: the vector stored at a target position points at the source position
-	 *       the data is pulled from, i.e. {@code source = target + vector}. Render's transform lists run
-	 *       source to target, so the vectors are negated here.</li>
-	 *   <li>Stored vectors are multiplied by {@code vectorScale} to reach full resolution. SOFIMA expresses them
-	 *       in the units of the original volume already, so the default of 1 is what that output needs.</li>
-	 * </ul>
+	 * The field is a <b>pull</b> map: the vector at a target position points at the source it was pulled from,
+	 * i.e. {@code source = target + vector}. Render's transform lists run source to target, so the vectors are
+	 * negated here and scaled by {@code vectorScale} to full resolution.
 	 */
 	private RealRandomAccess<FloatType> extractAndTransform(final RandomAccessibleInterval<FloatType> rawField,
 	                                                        final int xory) {
-		// The deformation field can contain NaNs, replace them with zeros
-		// Do this up front to not interpolate NaNs
+		// Replace NaNs before interpolating, so they don't leak into neighboring pixels.
 		final RandomAccessibleInterval<FloatType> cleaned = Converters.convertRAI(
 				rawField,
 				(i, o) -> o.set(Float.isNaN(i.getRealFloat()) ? 0 : i.getRealFloat()),
@@ -209,9 +185,8 @@ public class DisplacementFieldTransform
 				Views.interpolate(Views.extendMirrorDouble(slice), new NLinearInterpolatorFactory<>()),
 				fieldToWorld);
 
-		// Negate the pull map and scale the vectors to full resolution, folded into a single factor applied last
-		// (after interpolation) to keep the number of passes down. Negating alone only flips the vectors; the
-		// actual inversion (evaluating them at the target rather than the source) happens in applyInPlace.
+		// Negate and scale in one pass, applied after interpolation. Negating just flips the vectors; the actual
+		// inversion (evaluating at the target rather than the source) happens in applyInPlace.
 		final double pullToPushScale = -this.vectorScale;
 		return Converters.convert(
 				scaledAndInterpolated,
@@ -250,9 +225,8 @@ public class DisplacementFieldTransform
             target[1] = y;
         }
 
-        // A non-invertible (or very steep) field may still be off by more than the tolerance after the iteration
-        // cap. The last estimate is used rather than failing a whole render, but it is logged once per instance
-        // (instances are per tile spec, so logging every occurrence would flood the log with a line per pixel).
+        // A non-invertible field may still exceed the tolerance after the cap; use the last estimate rather than
+        // failing the render, logged once per instance to avoid a line per pixel.
         if ((step > INVERSION_TOLERANCE) && (! divergenceLogged)) {
             divergenceLogged = true;
             LOG.warn("applyInPlace: inversion did not converge within {} iterations at ({}, {}) for field {}; " +
@@ -269,23 +243,16 @@ public class DisplacementFieldTransform
      * Looks up the interpolated field vector (already negated and scaled to full resolution) at a world location.
      * Package private so that tests can check the field placement on its own, separately from the inversion.
      */
-    void lookUpVector(final double[] location,
-                      final double[] vector) {
+    void lookUpVector(final double[] location, final double[] vector) {
         vector[0] = displacementX.setPositionAndGet(location).getRealDouble();
         vector[1] = displacementY.setPositionAndGet(location).getRealDouble();
     }
 
     /**
-     * Initializes this transform by parsing the data string and loading the field into an imglib2 image.
-     * <p>
-     * The data string is the field source URI followed by {@code ?key=value} query parameters, e.g.
-     * {@code file:///path/to/field.n5?z=5&scale=40.0&offset=-5318.0,-783.0}. The portion before the {@code ?}
-     * becomes the {@link #fieldSourceUri} (the actual path); the query parameters supply the remaining fields.
-     * Only {@code z} is required; everything else defaults to the identity placement
-     * ({@code scale=vectorScale=1}, {@code offset=0,0}). Unknown parameters are rejected so
-     * that a misspelled one cannot silently fall back to its default.
-     *
-     * @param  data  field source URI with query parameters (see above).
+     * Parses the data string (field source URI plus {@code ?key=value} params, e.g.
+     * {@code file:///path/to/field.n5?z=5&scale=40.0&offset=-5318.0,-783.0}) and loads the field. Only
+     * {@code z} is required; the rest default to the identity placement. Unknown parameters are rejected so a
+     * misspelled one can't silently fall back to its default.
      *
      * @throws IllegalArgumentException
      *   if the data string cannot be parsed or the field cannot be loaded.
@@ -329,8 +296,7 @@ public class DisplacementFieldTransform
 
     @Override
     public String toDataString() {
-        // Writes every parameter, including any left at its default, so a persisted string keeps its meaning
-        // even if a default ever changes.  Callers building a string by hand may omit the defaulted ones.
+        // Writes every parameter, even defaults, so a persisted string keeps its meaning if a default ever changes.
         return fieldSourceUri +
                "?z=" + fieldZIndex +
                "&scale=" + scale +
