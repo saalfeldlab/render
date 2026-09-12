@@ -16,14 +16,17 @@ import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.UrlResourceUtil;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
+import org.janelia.render.client.parameter.BeamCorrectionParameters;
 import org.janelia.render.client.parameter.CreepCorrectionParameters;
 import org.janelia.render.client.parameter.LayerAsTileParameters;
 import org.janelia.render.client.parameter.MFOVAsTileParameters;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
 import org.janelia.render.client.parameter.MaskHackParameters;
+import org.janelia.render.client.parameter.MatchCollectionRenameParameters;
 import org.janelia.render.client.parameter.MatchCopyParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.TileRemovalSetup;
 import org.janelia.render.client.parameter.ScapeParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.parameter.TileRenderParameters;
@@ -50,6 +53,8 @@ public class AlignmentPipelineParameters
     private final UnconnectedCrossMFOVParameters unconnectedCrossMfov;
     private final TileClusterParameters tileCluster;
     private final MatchCopyParameters matchCopy;
+    private final MatchCollectionRenameParameters matchCollectionRename;
+    private final BeamCorrectionParameters beamCorrection;
     private final CreepCorrectionParameters creepCorrection;
     private final AffineBlockSolverSetup affineBlockSolverSetup;
     private final IntensityCorrectionSetup intensityCorrectionSetup;
@@ -59,10 +64,14 @@ public class AlignmentPipelineParameters
     private final TileRenderParameters tileRender;
     private final MFOVAsTileParameters mfovAsTile;
     private final LayerAsTileParameters layerAsTile;
+    private final TileRemovalSetup tileRemoval;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
+             null,
+             null,
              null,
              null,
              null,
@@ -91,6 +100,8 @@ public class AlignmentPipelineParameters
                                        final UnconnectedCrossMFOVParameters unconnectedCrossMfov,
                                        final TileClusterParameters tileCluster,
                                        final MatchCopyParameters matchCopy,
+                                       final MatchCollectionRenameParameters matchCollectionRename,
+                                       final BeamCorrectionParameters beamCorrection,
                                        final CreepCorrectionParameters creepCorrection,
                                        final AffineBlockSolverSetup affineBlockSolverSetup,
                                        final IntensityCorrectionSetup intensityCorrectionSetup,
@@ -99,7 +110,8 @@ public class AlignmentPipelineParameters
                                        final ScapeParameters scape,
                                        final TileRenderParameters tileRender,
                                        final MFOVAsTileParameters mfovAsTile,
-                                       final LayerAsTileParameters layerAsTile) {
+                                       final LayerAsTileParameters layerAsTile,
+                                       final TileRemovalSetup tileRemoval) {
         this.multiProject = multiProject;
         this.pipelineStackGroups = pipelineStackGroups;
         this.pipelineSteps = pipelineSteps;
@@ -109,6 +121,8 @@ public class AlignmentPipelineParameters
         this.unconnectedCrossMfov = unconnectedCrossMfov;
         this.tileCluster = tileCluster;
         this.matchCopy = matchCopy;
+        this.matchCollectionRename = matchCollectionRename;
+        this.beamCorrection = beamCorrection;
         this.creepCorrection = creepCorrection;
         this.affineBlockSolverSetup = affineBlockSolverSetup;
         this.intensityCorrectionSetup = intensityCorrectionSetup;
@@ -118,6 +132,7 @@ public class AlignmentPipelineParameters
         this.tileRender = tileRender;
         this.mfovAsTile = mfovAsTile;
         this.layerAsTile = layerAsTile;
+        this.tileRemoval = tileRemoval;
     }
 
     public MultiProjectParameters getMultiProject(final StackIdNamingGroup withNamingGroup) {
@@ -136,6 +151,10 @@ public class AlignmentPipelineParameters
     @SuppressWarnings("unused")
     public StackIdNamingGroup getIntensityCorrectedNamingGroup() {
         return pipelineStackGroups == null ? null : pipelineStackGroups.getIntensityCorrected();
+    }
+
+    public StackIdNamingGroup getOtherNamingGroup() {
+        return pipelineStackGroups == null ? null : pipelineStackGroups.getOther();
     }
 
     public List<AlignmentPipelineStepId> getPipelineSteps() {
@@ -164,6 +183,14 @@ public class AlignmentPipelineParameters
 
     public MatchCopyParameters getMatchCopy() {
         return matchCopy;
+    }
+
+    public MatchCollectionRenameParameters getMatchCollectionRename() {
+        return matchCollectionRename;
+    }
+
+    public BeamCorrectionParameters getBeamCorrection() {
+        return beamCorrection;
     }
 
     public CreepCorrectionParameters getCreepCorrection() {
@@ -204,6 +231,10 @@ public class AlignmentPipelineParameters
 
     public LayerAsTileParameters getLayerAsTile() {
         return layerAsTile;
+    }
+
+    public TileRemovalSetup getTileRemoval() {
+        return tileRemoval;
     }
 
     /**

@@ -12,7 +12,7 @@
     <name>Janelia Render Tools And Services</name>
     <groupId>org.janelia.render</groupId>
     <artifactId>modules-root</artifactId>
-    <version>4.3.0-SNAPSHOT</version>
+    <version>5.0.0-SNAPSHOT</version>
 
     <description>A collection of tools and HTTP services (APIs) for rendering transformed image tiles.</description>
     <url>https://github.com/saalfeldlab/render</url>
@@ -112,6 +112,16 @@
             <id>imagej.public</id>
             <url>https://maven.scijava.org/content/groups/public</url>
         </repository>
+        <!--
+          Bio-Formats (ome:*) artifacts are only proxied by maven.scijava.org, so builds break
+          whenever that proxy is unavailable (as it has been since the August 2026 outage, see
+          https://forum.image.sc/t/maven-scijava-org-unavailable/120874 ).
+          Pulling them from the upstream OME repository removes that dependency on the proxy.
+        -->
+        <repository>
+            <id>ome.releases</id>
+            <url>https://artifacts.openmicroscopy.org/artifactory/ome.releases</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -139,12 +149,6 @@
                 the hot-knife n5 version if you need to run concurrent code from both repos on the same n5 group.
         -->
         <n5-version>4.0.1</n5-version>
-
-        <!-- pom-scijava 45 bumps Descriptor_based_registration to 3.0.1, whose SPIM_Registration replacement
-             (net.preibisch:multiview-reconstruction) drops the point-descriptor / DoG API render's geometric
-             descriptor matcher is built on (mpicbg.pointdescriptor.matcher.*, mpicbg.spim.segmentation.*). Porting
-             that matcher is a separate effort, so keep the 2.x line reactor-wide (render-app also pins 2.1.3). -->
-        <Descriptor_based_registration.version>2.1.3</Descriptor_based_registration.version>
 
         <!--
           Keep this in sync with the jackson version bundled with the spark version in
@@ -181,6 +185,19 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <configuration>
                         <release>21</release>
+                        <!--
+                            Render has no annotation processors of its own and no scijava annotations
+                            (no @Plugin, no org.scijava.annotations usage), but scijava-common puts
+                            org.scijava.annotations.AnnotationProcessor on the class path where javac
+                            discovers it automatically.  That processor still declares
+                            @SupportedSourceVersion(SourceVersion.RELEASE_8) as of scijava-common 2.100.1,
+                            so every module compile prints:
+                              [WARNING] Supported source version 'RELEASE_8' from annotation processor
+                                        'org.scijava.annotations.AnnotationProcessor' less than -source '21'
+                            That warning is not covered by -Xlint:processing, so turn processing off
+                            instead.  Remove this if render ever needs a compile time annotation processor.
+                        -->
+                        <proc>none</proc>
                     </configuration>
                 </plugin>
                 <plugin>

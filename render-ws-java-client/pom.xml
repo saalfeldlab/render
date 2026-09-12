@@ -5,7 +5,7 @@
     <parent>
         <artifactId>modules-root</artifactId>
         <groupId>org.janelia.render</groupId>
-        <version>4.3.0-SNAPSHOT</version>
+        <version>5.0.0-SNAPSHOT</version>
     </parent>
 
     <name>Render Web Service Java Client</name>
@@ -54,6 +54,24 @@
                                     <resource>META-INF/json/org.janelia.saalfeldlab.n5.Compression$CompressionType</resource>
                                 </transformer>
 
+                                <!--
+                                    As of n5 4.x, compressions and codecs (block codecs, sharding, chunk grids, and
+                                    chunk key encodings) are also registered by name with @NameConfig.Name annotations
+                                    that get serialized into
+                                    META-INF/json/org.janelia.saalfeldlab.n5.serialization.NameConfig$Name files.
+
+                                    org.janelia.saalfeldlab:n5, org.janelia.saalfeldlab:n5-zarr, and
+                                    org.janelia:n5-zstandard each define a different set of names (e.g. n5 defines the
+                                    n5bytes and sharding_indexed codecs while n5-zarr defines the bytes codec and the
+                                    v2 chunk key encoding), so these need to be combined just like the
+                                    Compression$CompressionType resource above. Keeping only one of them leaves the
+                                    fat jar unable to resolve the other jars' codecs by name at runtime.
+                                -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer"
+                                             combine.children="append">
+                                    <resource>META-INF/json/org.janelia.saalfeldlab.n5.serialization.NameConfig$Name</resource>
+                                </transformer>
+
                                 <!-- copied these transformers from hot-knife pom.xml -->
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
                                     <resource>META-INF/json/org.scijava.plugin.Plugin</resource>
@@ -61,6 +79,20 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
                                     <resource>META-INF/json/mpicbg.spim.data.generic.sequence.ImgLoaderIo</resource>
                                 </transformer>
+
+                                <!--
+                                    Merge (rather than arbitrarily pick one of) the META-INF/services resources that
+                                    several dependencies define. These are usually complementary and not duplicates:
+                                    for example edu.ucar:cdm-core and ome:formats-gpl both define
+                                    ucar.nc2.filter.FilterProvider, but cdm-core registers the standard netCDF filters
+                                    while formats-gpl registers its own LZ4 filter, so dropping either loses filters.
+                                    The same applies to the jackson JsonFactory and ObjectCodec services, where
+                                    jackson-dataformat-xml registers XmlFactory / XmlMapper alongside the defaults.
+
+                                    Note that resources excluded by the filters below (e.g. META-INF/services/io.grpc.*)
+                                    never reach this transformer, so those exclusions still apply.
+                                -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
 
                             </transformers>
 
@@ -74,11 +106,12 @@
                                         <exclude>LICENSE</exclude>
                                         <exclude>META-INF/*</exclude>
                                         <exclude>META-INF/services/io.grpc.*</exclude> <!-- overlaps in grpc-... jars -->
+                                        <exclude>META-INF/third-party-licenses/**</exclude> <!-- overlaps in cdm-core and httpservices -->
                                         <exclude>META-INF/versions/**</exclude>
                                     </excludes>
                                 </filter>
                                 <filter>
-                                    <artifact>sc.fiji:SPIM_Registration</artifact>
+                                    <artifact>net.preibisch:multiview-reconstruction</artifact>
                                     <excludes>
                                         <exclude>META-INF/json/**</exclude>
                                     </excludes>
@@ -93,6 +126,13 @@
                                     <artifact>org.janelia.render:render-app</artifact>
                                     <excludes>
                                         <exclude>git.properties</exclude> <!-- will get pulled in from render-ws-java-client -->
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <!-- both the v1 and v2 AWS SDKs are on the class path -->
+                                    <artifact>com.amazonaws:aws-java-sdk-s3</artifact>
+                                    <excludes> <!-- will get pulled in from software.amazon.awssdk:sdk-core -->
+                                        <exclude>mime.types</exclude>
                                     </excludes>
                                 </filter>
                                 <filter>

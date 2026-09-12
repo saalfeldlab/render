@@ -39,6 +39,15 @@ public class LogbackTestTools {
         setLogLevel(loggerName, Level.INFO);
     }
 
+    public static Level getLogLevel(final String loggerName) {
+        final LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+        final Logger logger = loggerContext.getLogger(loggerName);
+        if (logger == null) {
+            throw new IllegalArgumentException("logger with name '" + loggerName + "' not found");
+        }
+        return logger.getLevel();
+    }
+
     public static void setLogLevel(final String loggerName,
                                    final Level logLevel) {
         final LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();

@@ -13,19 +13,22 @@ public class PipelineStackIdNamingGroups
     private final StackIdNamingGroup raw;
     private final StackIdNamingGroup aligned;
     private final StackIdNamingGroup intensityCorrected;
+    private final StackIdNamingGroup other;
 
     /** No-arg constructor required for JSON deserialization. */
     @SuppressWarnings("unused")
     private PipelineStackIdNamingGroups() {
-        this(null, null, null);
+        this(null, null, null, null);
     }
 
     public PipelineStackIdNamingGroups(final StackIdNamingGroup raw,
                                        final StackIdNamingGroup aligned,
-                                       final StackIdNamingGroup intensityCorrected) {
+                                       final StackIdNamingGroup intensityCorrected,
+                                       final StackIdNamingGroup other) {
         this.raw = raw;
         this.aligned = aligned;
         this.intensityCorrected = intensityCorrected;
+        this.other = other;
     }
 
     public StackIdNamingGroup getRaw() {
@@ -39,4 +42,9 @@ public class PipelineStackIdNamingGroups
     public StackIdNamingGroup getIntensityCorrected() {
         return intensityCorrected;
     }
+
+    public  StackIdNamingGroup getOther() {
+        return other;
+    }
+
 }

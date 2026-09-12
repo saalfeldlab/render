@@ -29,6 +29,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
@@ -60,7 +61,7 @@ import jakarta.annotation.Nonnull;
 /**
  * Spark client for ...
  */
-public class MFOVASTileClient
+public class MFOVAsTileClient
         implements Serializable, AlignmentPipelineStep {
 
     public static class Parameters extends CommandLineParameters {
@@ -87,7 +88,7 @@ public class MFOVASTileClient
             public void runClient(final String[] args) throws Exception {
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
-                final MFOVASTileClient client = new MFOVASTileClient();
+                final MFOVAsTileClient client = new MFOVAsTileClient();
                 client.createContextAndRun(parameters);
             }
         };
@@ -95,7 +96,7 @@ public class MFOVASTileClient
     }
 
     /** Empty constructor required for alignment pipeline steps. */
-    public MFOVASTileClient() {
+    public MFOVAsTileClient() {
     }
 
     /** Create a spark context and run the client with the specified parameters. */
@@ -120,7 +121,15 @@ public class MFOVASTileClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
         final Parameters clientParameters = new Parameters();
-        clientParameters.multiProject = pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
+
+        final StackIdNamingGroup otherNamingGroup = pipelineParameters.getOtherNamingGroup();
+        if (otherNamingGroup == null) {
+            throw new IllegalArgumentException(
+                    "The " + AlignmentPipelineStepId.MFOV_AS_TILE + " pipeline step requires that " +
+                    "an 'other' pipelineStackGroup is defined in the pipeline parameters.");
+        }
+
+        clientParameters.multiProject = pipelineParameters.getMultiProject(otherNamingGroup);
         clientParameters.mfovAsTile = pipelineParameters.getMfovAsTile();
         run(sparkContext, clientParameters);
     }
@@ -142,7 +151,9 @@ public class MFOVASTileClient
                                                                                    clientParameters.multiProject,
                                                                                    clientParameters.mfovAsTile);
         if (clientParameters.mfovAsTile.doPrealign()) {
-            alignAndIntensityCorrectMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
+            alignAndIntensityCorrectMfovAsTileStacks(sparkContext,
+                                                     mfovAsTileStackLists,
+                                                     clientParameters.mfovAsTile.isDeriveSfovMatchData());
         }
 
         buildDynamicMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
@@ -163,8 +174,10 @@ public class MFOVASTileClient
     }
 
     private static void alignAndIntensityCorrectMfovAsTileStacks(final JavaSparkContext sparkContext,
-                                                                 final MFOVAsTileStackLists mfovAsTileStackLists)
+                                                                 final MFOVAsTileStackLists mfovAsTileStackLists,
+                                                                 final boolean deriveSfovMatchData)
             throws IOException {
+
         LOG.info("alignAndIntensityCorrectMfovAsTileStacks: entry");
 
         final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
@@ -177,7 +190,10 @@ public class MFOVASTileClient
 
         for (final StackWithZValues rawSfovStackWithZ : rawSfovStacksWithAllZ) {
             final StackId rawSfovStackId = rawSfovStackWithZ.getStackId();
+            final String rawSfovStack = rawSfovStackId.getStack();
             final StackId prealignedStackId = rawSfovStackId.withStackSuffix(prealignedSfovStackSuffix);
+            final MatchCollectionId rawSfovMatchCollectionId = deriveSfovMatchData ? null : new MatchCollectionId(rawSfovStackId.getOwner(),
+                                                                                                                  rawSfovStack + "_match");
 
             if (mfovAsTileStackLists.isExistingStack(prealignedStackId)) {
                 LOG.info("alignAndIntensityCorrectMfovAsTileStacks: skipping build of {} because it already exists",
@@ -186,23 +202,24 @@ public class MFOVASTileClient
             }
 
             // Create prealigned stack
-            final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
-                                                                     rawSfovStackId.getOwner(),
-                                                                     rawSfovStackId.getProject());
-            final StackMetaData rawStackMetaData = dataClient.getStackMetaData(rawSfovStackId.getStack());
-            dataClient.setupDerivedStack(rawStackMetaData, prealignedStackId.getStack());
+            final RenderDataClient stackDataClient = new RenderDataClient(baseDataUrl,
+                                                                          rawSfovStackId.getOwner(),
+                                                                          rawSfovStackId.getProject());
+            final StackMetaData rawStackMetaData = stackDataClient.getStackMetaData(rawSfovStackId.getStack());
+            stackDataClient.setupDerivedStack(rawStackMetaData, prealignedStackId.getStack());
             prealignedStackIds.add(prealignedStackId);
 
             // Collect MFOV tasks for each layer
             for (final Double z : rawSfovStackWithZ.getzValues()) {
-                final List<String> mfovNames = MultiProjectParameters.getSortedMFOVNamesForOneLayer(dataClient,
-                                                                                                    rawSfovStackId.getStack(),
+                final List<String> mfovNames = MultiProjectParameters.getSortedMFOVNamesForOneLayer(stackDataClient,
+                                                                                                    rawSfovStack,
                                                                                                     z);
                 for (final String mfovName : mfovNames) {
                     mfovTasks.add(new MfovPrealignTask(baseDataUrl,
-                                                        rawSfovStackId,
-                                                        prealignedStackId,
-                                                        new LayerMFOV(z, mfovName))
+                                                       rawSfovStackId,
+                                                       prealignedStackId,
+                                                       new LayerMFOV(z, mfovName),
+                                                       rawSfovMatchCollectionId)
                     );
                 }
             }
@@ -583,8 +600,6 @@ public class MFOVASTileClient
         final MFOVAsTileParameters mfovAsTile = mfovAsTileStackLists.getMfovAsTile();
         final AffineBlockSolverSetup translationSetup =
                 mfovAsTile.buildMfovAffineBlockSolverSetup(MFOVAsTileParameters.SolveType.TRANSLATION);
-        final AffineBlockSolverSetup affineSetup =
-                mfovAsTile.buildMfovAffineBlockSolverSetup(MFOVAsTileParameters.SolveType.AFFINE);
 
         final boolean deriveMatchCollectionNamesFromProject = false; // use standard stack-based match collection names
         final String matchSuffix = "";                               // without any suffix
@@ -604,10 +619,6 @@ public class MFOVASTileClient
                                                                   renderedMfovStackWithAllZ,
                                                                   deriveMatchCollectionNamesFromProject,
                                                                   matchSuffix));
-                setupList.add(affineSetup.buildPipelineClone(baseDataUrl,
-                                                             renderedMfovStackWithAllZ,
-                                                             deriveMatchCollectionNamesFromProject,
-                                                             matchSuffix));
             }
         }
 
@@ -839,5 +850,5 @@ public class MFOVASTileClient
 
     public static final int MAX_PARTITIONS_FOR_ONE_WEB_SERVER = 100000;
 
-    private static final Logger LOG = LoggerFactory.getLogger(MFOVASTileClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MFOVAsTileClient.class);
 }

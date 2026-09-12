@@ -205,15 +205,19 @@ public class TilePairClientTest {
 //    public static void main(final String[] args) {
 //
 //        final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[] {
-//                "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-//                "--owner", "flyTEM",
-//                "--project", "FAFB_montage",
-//                "--stack", "check_923_split_rough",
+//                "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+//                "--owner", "hess_wafers_60_61",
+//                "--project", "w61_serial_140_to_149",
+//                "--stack", "w61_s140_r00_gc",
 //                "--xyNeighborFactor", "0.6",
 //                "--excludeCornerNeighbors", "false",
-//                "--excludeSameLayerNeighbors", "true",
+//                "--excludeSameLayerNeighbors", "false",
+//                "--excludeSameSectionNeighbors", "false",
+//                "--excludeSameMfovNeighbors", "false",
+//                "--excludeDifferentMfovNeighbors", "true",
 //                "--excludeCompletelyObscuredTiles", "false",
-//                "--zNeighborDistance", "40",
+//                "--zNeighborDistance", "0",
+////                "--z", "1", "2", "3",
 //                "--toJson", "/Users/trautmane/Desktop/test_pairs.json"
 //        };
 //        TilePairClient.main(effectiveArgs);

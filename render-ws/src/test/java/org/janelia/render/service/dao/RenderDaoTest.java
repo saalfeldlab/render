@@ -44,7 +44,7 @@ public class RenderDaoTest {
     private static RenderDao dao;
 
     @BeforeClass
-    public static void before() throws Exception {
+    public static void before() {
         stackId = new StackId("flyTEM", "test", "elastic");
         embeddedMongoDb = new EmbeddedMongoDb(RenderDao.RENDER_DB_NAME);
         dao = new RenderDao(embeddedMongoDb.getMongoClient());
@@ -177,7 +177,7 @@ public class RenderDaoTest {
 
         zValues = dao.getZValues(filteredStackId);
         Assert.assertEquals("invalid number of z values after clone filter", 1, zValues.size());
-        Assert.assertEquals("invalid z value after clone filter", newZValue, zValues.get(0));
+        Assert.assertEquals("invalid z value after clone filter", newZValue, zValues.getFirst());
     }
 
     @Test
@@ -210,17 +210,17 @@ public class RenderDaoTest {
         final Bounds expectedBounds = new Bounds(1094.0, 1769.0, 3903.0, 9917.0, 8301.0, 3903.1);
 
         Assert.assertEquals("invalid bounds", expectedBounds.toJson(), stats.getStackBounds().toJson());
-        Assert.assertEquals("invalid tile count", new Long(14), stats.getTileCount());
+        Assert.assertEquals("invalid tile count", Long.valueOf(14), stats.getTileCount());
 
         // test getSectionData after section collection was created by call to ensureIndexesAndDeriveStats
         final List<SectionData> list = dao.getSectionData(stackId, null, null);
 
         Assert.assertNotNull("null list retrieved", list);
         Assert.assertEquals("invalid number of sections found", 3, list.size());
-        final SectionData sectionData = list.get(0);
+        final SectionData sectionData = list.getFirst();
         Assert.assertEquals("invalid sectionId for first section", "3903.0", sectionData.getSectionId());
         Assert.assertEquals("invalid z for section 3903.0", 3903, sectionData.getZ(), 0.01);
-        Assert.assertEquals("invalid tileCount for section 3903.0", new Long(2), sectionData.getTileCount());
+        Assert.assertEquals("invalid tileCount for section 3903.0", Long.valueOf(2), sectionData.getTileCount());
 
         final List<SectionData> filteredList = dao.getSectionData(stackId, 3902.0, 3903.0);
 
@@ -237,8 +237,7 @@ public class RenderDaoTest {
         final List<Double> zValuesBeforeRemove = dao.getZValues(stackId);
         Assert.assertNotNull("zValues null for " + stackId + " before removal",
                              zValuesBeforeRemove);
-        Assert.assertTrue("zValues missing for " + stackId + " before removal",
-                          zValuesBeforeRemove.size() > 0);
+        Assert.assertFalse("zValues missing for " + stackId + " before removal", zValuesBeforeRemove.isEmpty());
 
         dao.removeStack(stackId, true);
         final StackMetaData stackMetaAfterRemove = dao.getStackMetaData(stackId);

@@ -11,6 +11,7 @@ import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
 import org.janelia.alignment.match.parameters.MatchStageParameters;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
@@ -125,10 +126,24 @@ public class LayerAsTileParameters
         return this.renderedLayerRunTimestamp;
     }
 
-    public List<MatchRunParameters> buildLayerMatchRunList() {
+    public List<MatchRunParameters> buildLayerMatchRunList(final int matchMinNumInliers) {
         final List<MatchRunParameters> layerMatchRunList = new ArrayList<>();
-        layerMatchRunList.add(buildCrossMatchRunParameters());
+        layerMatchRunList.add(buildCrossMatchRunParameters(matchMinNumInliers));
         return layerMatchRunList;
+    }
+
+    /**
+     * @return the minimum number of match inliers to require for layers with the specified bounds.
+     *         Larger layers need more inliers, so the count is derived from the layer area.
+     *         The derived count is rounded to a multiple of {@link #MIN_INLIER_ROUNDING_FACTOR}
+     *         so that similarly sized stacks share the same count and can be matched together.
+     */
+    public static int deriveMatchMinNumInliers(final Bounds renderedLayerStackBounds) {
+        final double layerPixelCount = renderedLayerStackBounds.getDeltaX() * renderedLayerStackBounds.getDeltaY();
+        final long roundedInliers = Math.round(layerPixelCount / PIXELS_PER_MIN_INLIER / MIN_INLIER_ROUNDING_FACTOR) *
+                                    MIN_INLIER_ROUNDING_FACTOR;
+        // never require fewer than one rounding factor of inliers, even for the smallest layers
+        return (int) Math.max(MIN_INLIER_ROUNDING_FACTOR, roundedInliers);
     }
 
     public AffineBlockSolverSetup buildLayerAffineBlockSolverSetup() {
@@ -172,7 +187,7 @@ public class LayerAsTileParameters
         return setup;
     }
 
-    private static MatchRunParameters buildCrossMatchRunParameters() {
+    private static MatchRunParameters buildCrossMatchRunParameters(final int matchMinNumInliers) {
 
         // renderWithFilter = true greatly improves results when no intensity correction has been run on SFOVs
         final boolean renderWithFilter = true;
@@ -186,7 +201,7 @@ public class LayerAsTileParameters
                                                  new FeatureRenderClipParameters(),
                                                  MFOVAsTileParameters.buildFeatureExtractionParameters(),
                                                  MFOVAsTileParameters.buildFeatureMatchDerivation(MatchFilter.FilterType.AGGREGATED_CONSENSUS_SETS,
-                                                                                                  100,
+                                                                                                  matchMinNumInliers,
                                                                                                   ModelType.RIGID),
                                                  MFOVAsTileParameters.buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
@@ -200,4 +215,16 @@ public class LayerAsTileParameters
                                                                                              true),
                                       matchStageParametersList);
     }
+
+    /**
+     * Number of layer pixels for each required match inlier.
+     * Layers with 12 million pixels typically need a minimum of 100 inliers.
+     */
+    private static final double PIXELS_PER_MIN_INLIER = 120_000.0;
+
+    /**
+     * Derived minimum inlier counts are rounded to a multiple of this factor so that
+     * stacks with similar layer sizes can be batched together for match generation.
+     */
+    private static final int MIN_INLIER_ROUNDING_FACTOR = 25;
 }

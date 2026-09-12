@@ -62,9 +62,8 @@ import org.janelia.render.client.parameter.TileRenderParameters;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudUtils;
 import org.janelia.saalfeldlab.n5.KeyValueAccess;
-import org.janelia.saalfeldlab.n5.LockedChannel;
-import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.googlecloud.GoogleCloudStorageKeyValueAccess;
+import org.janelia.saalfeldlab.n5.readdata.ReadData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -190,7 +189,7 @@ public class RenderTilesClient {
                                 "The filterListPath file " + filterFile.getAbsolutePath() + " contains " +
                                 filterListNames.size() + " lists but must contain one and only one list");
                     }
-                    filterSpecList = factory.getFilterList(filterListNames.get(0));
+                    filterSpecList = factory.getFilterList(filterListNames.getFirst());
                 } catch(final IOException ioe) {
                     throw new IllegalArgumentException("Failed to read filterListPath " + filterFile.getAbsolutePath(),
                                                        ioe);
@@ -305,33 +304,33 @@ public class RenderTilesClient {
     public void setupStorageDirectories()
             throws IOException {
 
-        for (final double z : renderDataClient.getStackZValues(stack)) {
+        LOG.info("setupStorageDirectories: entry");
 
-            final List<String> relativePathSegments = getImageParentPathSegments(z);
-            final URI parentUri = storageBackend.resolvePath(relativePathSegments);
+        if (storageBackend instanceof CloudStorage) {
 
-            LOG.info("setupStorageDirectories: ensuring writable directory (or bucket 'prefix') for z {} at {}",
-                     z, parentUri);
-            try {
-                storageBackend.ensureWritableDirectory(parentUri);
+            LOG.info("setupStorageDirectories: skipping since there is no need to set anything up for CloudStorage");
 
-                final String scheme = storageBackend.root.getScheme();
-                if ((scheme != null) && scheme.startsWith("gs:")) {
-                    // Supposedly, ~1000 object mutations per second per bucket per project are allowed by Google.
-                    // We have seen "exceeded the rate limit for object mutation operations" exceptions even after
-                    // limiting the rate to 20 per second.
-                    // Limiting the rate to 10 per second to try to avoid this.
-                    Thread.sleep(100);
-                }
+        } else {
 
-            } catch (final Throwable t) {
-                LOG.warn("setupStorageDirectories: caught exception and will retry setup in 5 seconds", t);
+            for (final double z : renderDataClient.getStackZValues(stack)) {
+
+                final List<String> relativePathSegments = getImageParentPathSegments(z);
+                final URI parentUri = storageBackend.resolvePath(relativePathSegments);
+
+                LOG.info("setupStorageDirectories: ensuring writable directory for z {} at {}", z, parentUri);
+
                 try {
-                    Thread.sleep(5000);
-                } catch (final InterruptedException ie) {
-                    LOG.warn("setupStorageDirectories: caught exception while sleeping and will retry setup now", ie);
+                    storageBackend.ensureWritableDirectory(parentUri);
+                } catch (final Throwable t) {
+                    LOG.warn("setupStorageDirectories: caught exception and will retry setup in 5 seconds", t);
+                    try {
+                        Thread.sleep(5000);
+                    } catch (final InterruptedException ie) {
+                        LOG.warn("setupStorageDirectories: caught exception while sleeping and will retry setup now", ie);
+                    }
+                    storageBackend.ensureWritableDirectory(parentUri);
                 }
-                storageBackend.ensureWritableDirectory(parentUri);
+
             }
 
         }
@@ -353,7 +352,7 @@ public class RenderTilesClient {
                                      renderParametersQueryString;
 
         RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
-        final TileSpec tileSpec = renderParameters.getTileSpecs().get(0);
+        final TileSpec tileSpec = renderParameters.getTileSpecs().getFirst();
 
         if (tileRender.renderTileImagesLocally) {
             final String imageUrl = tileSpec.getFirstMipmapEntry().getValue().getImageUrl();
@@ -364,7 +363,7 @@ public class RenderTilesClient {
         }
 
         if (filterSpecList != null) {
-            tileSpec.setFilterSpec(filterSpecList.get(0));
+            tileSpec.setFilterSpec(filterSpecList.getFirst());
             for (int i = 1; i < filterSpecList.size(); i++) {
                 tileSpec.addFilterSpec(filterSpecList.get(i));
             }
@@ -461,7 +460,7 @@ public class RenderTilesClient {
                 throw new IllegalArgumentException("hack stack tiles should have only one channel but tile " +
                                                    tileId + " has " + allChannels.size() + " channels");
             }
-            final ChannelSpec channelSpec = allChannels.get(0);
+            final ChannelSpec channelSpec = allChannels.getFirst();
 
             // Use the URI string directly instead of the file path
             ImageAndMask renderedImageAndMask = channelSpec
@@ -657,13 +656,7 @@ public class RenderTilesClient {
 
         @Override
         void ensureWritableDirectory(final URI uri) {
-            if (!keyValueAccess.exists(uri.getPath())) {
-                try {
-                    keyValueAccess.createDirectories(uri.getPath());
-                } catch (final N5Exception e) {
-                    throw new RuntimeException("Could not create directory " + uri, e);
-                }
-            }
+            // no-op for cloud storage
         }
 
         @Override
@@ -673,12 +666,16 @@ public class RenderTilesClient {
                         final RenderParameters renderParameters) throws IOException {
 
             // TODO: render parameters are currently ignored, so the behavior might differ from the file system version!
-            try (final LockedChannel lockedChannel = keyValueAccess.lockForWriting(uri.getPath())) {
-                final ByteArrayOutputStream oStream = new ByteArrayOutputStream();
-                ImageIO.write(image, format, oStream);
-                lockedChannel.newOutputStream().write(oStream.toByteArray());
-                LOG.info("image written to {}", uri);
-            }
+
+            // NOTE: the full URI (and not uri.getPath()) must be used here because
+            //       GoogleCloudStorageKeyValueAccess derives bucket keys with
+            //       GoogleCloudUtils.getGoogleCloudStorageKey, which treats the first element of a
+            //       scheme-less path as a bucket name and drops it.
+            final ByteArrayOutputStream oStream = new ByteArrayOutputStream();
+            ImageIO.write(image, format, oStream);
+            keyValueAccess.write(uri.toString(), ReadData.from(oStream.toByteArray()));
+
+            LOG.info("image written to {}", uri);
 
             // This yields the public URL for the image
             return "https://storage.googleapis.com" + uri.toString().substring(4);

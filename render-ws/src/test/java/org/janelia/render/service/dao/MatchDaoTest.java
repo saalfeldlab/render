@@ -223,23 +223,23 @@ public class MatchDaoTest {
 
         MatchCollectionMetaData collectionMetaData = getCollectionMetaData(deletionCollectionId);
         Assert.assertEquals("invalid pair count before deletions",
-                            new Long(12), collectionMetaData.getPairCount());
+                            Long.valueOf(12), collectionMetaData.getPairCount());
 
         dao.removeMatchesBetweenTiles(deletionCollectionId, "0", tileA, "0", tileB);
 
         collectionMetaData = getCollectionMetaData(deletionCollectionId);
         Assert.assertEquals("invalid pair count after removing one tile pair",
-                            new Long(11), collectionMetaData.getPairCount());
+                            Long.valueOf(11), collectionMetaData.getPairCount());
 
         dao.removeMatchesBetweenGroups(deletionCollectionId, "0", "7");
         collectionMetaData = getCollectionMetaData(deletionCollectionId);
         Assert.assertEquals("invalid pair count after removing pairs between groups 0 and 7",
-                            new Long(10), collectionMetaData.getPairCount());
+                            Long.valueOf(10), collectionMetaData.getPairCount());
 
         dao.removeMatchesOutsideGroup(deletionCollectionId, "0");
         collectionMetaData = getCollectionMetaData(deletionCollectionId);
         Assert.assertEquals("invalid pair count after removing pairs outside group 0",
-                            new Long(8), collectionMetaData.getPairCount());
+                            Long.valueOf(8), collectionMetaData.getPairCount());
 
         dao.removeAllMatches(deletionCollectionId);
         collectionMetaData = getCollectionMetaData(deletionCollectionId);
@@ -269,39 +269,40 @@ public class MatchDaoTest {
     public void testMatchTrial() {
 
         final String json =
-                "{\n" +
-                "  \"parameters\" : {\n" +
-                "    \"featureAndMatchParameters\" : {\n" +
-                "      \"siftFeatureParameters\" : {\n" +
-                "        \"fdSize\" : 4,\n" +
-                "        \"minScale\" : 0.5,\n" +
-                "        \"maxScale\" : 1.0,\n" +
-                "        \"steps\" : 3\n" +
-                "      },\n" +
-                "      \"matchDerivationParameters\" : {\n" +
-                "        \"matchRod\" : 0.95,\n" +
-                "        \"matchModelType\" : \"AFFINE\",\n" +
-                "        \"matchIterations\" : 1000,\n" +
-                "        \"matchMaxEpsilon\" : 5.0,\n" +
-                "        \"matchMinInlierRatio\" : 0.0,\n" +
-                "        \"matchMinNumInliers\" : 6,\n" +
-                "        \"matchMaxTrust\" : 30.0,\n" +
-                "        \"matchFilter\" : \"AGGREGATED_CONSENSUS_SETS\"\n" +
-                "      }\n" +
-                "    },\n" +
-                "    \"pRenderParametersUrl\" : \"http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/spc_mm2_sample_rough_test_1_tier_3/stack/0016x0017_000118/tile/z_1015.0_box_5632_6656_1024_1024_0.500000/render-parameters?excludeMask=true&normalizeForMatching=true&filter=true&fillWithNoise=true\",\n" +
-                "    \"qRenderParametersUrl\" : \"http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/spc_mm2_sample_rough_test_1_tier_3/stack/0016x0017_000118/tile/z_1016.0_box_5632_6656_1024_1024_0.500000/render-parameters?excludeMask=true&normalizeForMatching=true&filter=true&fillWithNoise=true\"\n" +
-                "  },\n" +
-                "  \"matches\" : [ ],\n" +
-                "  \"stats\" : {\n" +
-                "    \"pFeatureCount\" : 996,\n" +
-                "    \"pFeatureDerivationMilliseconds\" : 1415,\n" +
-                "    \"qFeatureCount\" : 1133,\n" +
-                "    \"qFeatureDerivationMilliseconds\" : 1279,\n" +
-                "    \"consensusSetSizes\" : [ 0 ],\n" +
-                "    \"matchDerivationMilliseconds\" : 324\n" +
-                "  }\n" +
-                "}";
+                """
+                        {
+                          "parameters" : {
+                            "featureAndMatchParameters" : {
+                              "siftFeatureParameters" : {
+                                "fdSize" : 4,
+                                "minScale" : 0.5,
+                                "maxScale" : 1.0,
+                                "steps" : 3
+                              },
+                              "matchDerivationParameters" : {
+                                "matchRod" : 0.95,
+                                "matchModelType" : "AFFINE",
+                                "matchIterations" : 1000,
+                                "matchMaxEpsilon" : 5.0,
+                                "matchMinInlierRatio" : 0.0,
+                                "matchMinNumInliers" : 6,
+                                "matchMaxTrust" : 30.0,
+                                "matchFilter" : "AGGREGATED_CONSENSUS_SETS"
+                              }
+                            },
+                            "pRenderParametersUrl" : "http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/spc_mm2_sample_rough_test_1_tier_3/stack/0016x0017_000118/tile/z_1015.0_box_5632_6656_1024_1024_0.500000/render-parameters?excludeMask=true&normalizeForMatching=true&filter=true&fillWithNoise=true",
+                            "qRenderParametersUrl" : "http://renderer-dev:8080/render-ws/v1/owner/flyTEM/project/spc_mm2_sample_rough_test_1_tier_3/stack/0016x0017_000118/tile/z_1016.0_box_5632_6656_1024_1024_0.500000/render-parameters?excludeMask=true&normalizeForMatching=true&filter=true&fillWithNoise=true"
+                          },
+                          "matches" : [ ],
+                          "stats" : {
+                            "pFeatureCount" : 996,
+                            "pFeatureDerivationMilliseconds" : 1415,
+                            "qFeatureCount" : 1133,
+                            "qFeatureDerivationMilliseconds" : 1279,
+                            "consensusSetSizes" : [ 0 ],
+                            "matchDerivationMilliseconds" : 324
+                          }
+                        }""";
 
         final MatchTrial matchTrial = MatchTrial.fromJson(json);
 
