@@ -1,6 +1,8 @@
 package org.janelia.render.client.spark.pipeline;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.List;
 
@@ -40,10 +42,6 @@ public class AlignmentPipelineParametersTest {
         
         Assert.assertNotNull("stepClients is null", stepClients);
         Assert.assertEquals("incorrect number of stepClients", 7, stepClients.size());
-
-        final AlignmentPipelineStep stepClient = stepClients.get(0);
-        Assert.assertEquals("first stepClient has incorrect defaultStepId",
-                            AlignmentPipelineStepId.GENERATE_MIPMAPS, stepClient.getDefaultStepId());
     }
 
     @Test
@@ -58,12 +56,12 @@ public class AlignmentPipelineParametersTest {
 
     @Test
     public void testLoadParametersFromUrl()
-            throws IOException {
+            throws IOException, URISyntaxException {
         final String commitJsonUrlString =
                 "https://raw.githubusercontent.com/saalfeldlab/render/748e99806b3be06d5c7ac06a538698f7c523cb26";
         final String pathJsonUrlString =
                 "/render-ws-spark-client/src/main/resources/multisem/wafer_60/pipeline_json/01_match/pipe.01.match.json";
-        final URL jsonUrl = new URL(commitJsonUrlString + pathJsonUrlString);
+        final URL jsonUrl = new URI(commitJsonUrlString + pathJsonUrlString).toURL();
 
         final String baseDataUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1";
         final AlignmentPipelineParameters pipelineParameters =
@@ -79,7 +77,7 @@ public class AlignmentPipelineParametersTest {
         Assert.assertEquals("incorrect number of pipelineSteps",
                             1, pipelineSteps.size());
         Assert.assertEquals("incorrect first pipelineStep",
-                            DERIVE_TILE_MATCHES.toString(), pipelineSteps.get(0).toString());
+                            DERIVE_TILE_MATCHES.toString(), pipelineSteps.getFirst().toString());
     }
 
     private AlignmentPipelineParameters loadTestParameters() throws IOException {

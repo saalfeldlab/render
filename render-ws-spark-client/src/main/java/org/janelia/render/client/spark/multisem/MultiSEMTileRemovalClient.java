@@ -26,7 +26,6 @@ import org.janelia.render.client.parameter.TileRemovalSetup;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
-import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -119,7 +118,7 @@ public class MultiSEMTileRemovalClient
         tileRemovalSetup.validate();
     }
 
-    /** Run the client as part of an alignment pipeline. */
+    /** Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#REMOVE_TILES REMOVE_TILES} step. */
     @Override
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
@@ -131,11 +130,6 @@ public class MultiSEMTileRemovalClient
                     tileRemovalSetup.getOwner(),
                     tileRemovalSetup.getPeakScanJson(),
                     tileRemovalSetup.getStackList());
-    }
-
-    @Override
-    public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.REMOVE_TILES;
     }
 
     public void removeTiles(final String baseDataUrl,

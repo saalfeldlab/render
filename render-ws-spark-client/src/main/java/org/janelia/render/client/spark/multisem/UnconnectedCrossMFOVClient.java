@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -23,7 +22,6 @@ import org.janelia.render.client.parameter.UnconnectedCrossMFOVParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
-import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,7 +89,7 @@ public class UnconnectedCrossMFOVClient
                                                                   pipelineParameters.getUnconnectedCrossMfov());
     }
 
-    /** Run the client as part of an alignment pipeline. */
+    /** Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#FIND_UNCONNECTED_CROSS_MFOVS FIND_UNCONNECTED_CROSS_MFOVS} step. */
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
@@ -110,11 +108,6 @@ public class UnconnectedCrossMFOVClient
         } else {
             LOG.info("runPipelineStep: all MFOVs in all stacks are connected");
         }
-    }
-
-    @Override
-    public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.FIND_UNCONNECTED_CROSS_MFOVS;
     }
 
     private List<UnconnectedMFOVPairsForStack> findUnconnectedMFOVs(final JavaSparkContext sparkContext,
@@ -159,7 +152,7 @@ public class UnconnectedCrossMFOVClient
 
         final JavaRDD<List<UnconnectedMFOVPairsForStack>> rddUnconnected = rddStackWithZValues.map(findFunction);
         final List<UnconnectedMFOVPairsForStack> possiblyEmptyUnconnectedList =
-                rddUnconnected.collect().stream().flatMap(List::stream).collect(Collectors.toList());
+                rddUnconnected.collect().stream().flatMap(List::stream).toList();
 
         LOG.info("findUnconnectedMFOVs: collected {} items from rddUnconnected", possiblyEmptyUnconnectedList.size());
 

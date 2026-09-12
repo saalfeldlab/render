@@ -19,7 +19,6 @@ import org.janelia.render.client.parameter.SofimaParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
-import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,7 +91,7 @@ public class ImportSofimaClient
         sofima.validate();
     }
 
-    /** Run the client as part of an alignment pipeline. */
+    /** Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#IMPORT_SOFIMA IMPORT_SOFIMA} step. */
     @Override
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
@@ -102,11 +101,6 @@ public class ImportSofimaClient
         clientParameters.multiProject = pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
         clientParameters.sofima = pipelineParameters.getSofima();
         run(sparkContext, clientParameters);
-    }
-
-    @Override
-    public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.IMPORT_SOFIMA;
     }
 
     private void run(final JavaSparkContext sparkContext,

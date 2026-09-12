@@ -46,7 +46,6 @@ import org.janelia.render.client.parameter.ScapeParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
-import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,6 +137,7 @@ public class ScapeClient
                                                                   pipelineParameters.getScape());
     }
 
+    /** Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#RENDER_SCAPE_IMAGES RENDER_SCAPE_IMAGES} step. */
     @Override
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
@@ -155,11 +155,6 @@ public class ScapeClient
                                     new ZRangeParameters(),
                                     pipelineParameters.getScape());
         }
-    }
-
-    @Override
-    public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.RENDER_SCAPE_IMAGES;
     }
 
     private static void exportStackToFilesystem(final JavaSparkContext sparkContext,
@@ -499,7 +494,7 @@ public class ScapeClient
         File getOutputFile(final String fileExtension) {
             final String paddedZName;
             if (sectionDataList.size() > 1) {
-                final Double lastZ = sectionDataList.get(sectionDataList.size() - 1).getZ();
+                final Double lastZ = sectionDataList.getLast().getZ();
                 final String formatPattern = "z" + zFormatSpec + "_to_" + zFormatSpec;
                 paddedZName = String.format(formatPattern, firstZ, lastZ);
             } else {

@@ -27,7 +27,6 @@ import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
-import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,7 +93,7 @@ public class MaskHackClient
                                                                   pipelineParameters.getMaskHack());
     }
 
-    /** Run the client as part of an alignment pipeline. */
+    /** Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#HACK_MASK HACK_MASK} step. */
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
@@ -102,11 +101,6 @@ public class MaskHackClient
         final Parameters clientParameters = new Parameters(pipelineParameters.getMultiProject(null),
                                                            pipelineParameters.getMaskHack());
         copyStackAndSetMasks(sparkContext, clientParameters);
-    }
-
-    @Override
-    public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.HACK_MASK;
     }
 
     private void copyStackAndSetMasks(final JavaSparkContext sparkContext,

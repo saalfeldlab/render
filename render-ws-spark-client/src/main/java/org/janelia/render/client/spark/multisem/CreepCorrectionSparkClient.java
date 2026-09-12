@@ -115,7 +115,7 @@ public class CreepCorrectionSparkClient
         creepCorrection.validate();
     }
 
-    /** Run the client as part of an alignment pipeline. */
+    /** Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#CORRECT_CREEP CORRECT_CREEP} step. */
     @Override
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
@@ -137,11 +137,6 @@ public class CreepCorrectionSparkClient
                          pipelineParameters.getCreepCorrection(),
                          multiProject.getMatchCollectionIdForStack(stackWithAllZ.getStackId()));
         }
-    }
-
-    @Override
-    public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.CORRECT_CREEP;
     }
 
     public void correctCreep(final JavaSparkContext sparkContext,
