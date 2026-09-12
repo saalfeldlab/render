@@ -54,23 +54,25 @@ public class ImportSofimaClient {
 	private final Parameters params;
 	private final RenderDataClient renderClient;
 
+	// NOTE: these fields are public so that distributed clients (e.g. the spark ImportSofimaClient)
+	//       can build parameters for one stack without going through the command line
 	public static class Parameters extends CommandLineParameters {
 		@ParametersDelegate
-		private final RenderWebServiceParameters renderParams = new RenderWebServiceParameters();
+		public final RenderWebServiceParameters renderParams = new RenderWebServiceParameters();
 		@ParametersDelegate
-		private final ZRangeParameters zRangeParams = new ZRangeParameters();
+		public final ZRangeParameters zRangeParams = new ZRangeParameters();
 		@Parameter(names = "--stack", description = "Source stack to which the displacement field is added", required = true)
-		private String stack;
+		public String stack;
 		@Parameter(names = "--targetStack", description = "Stack to save modified tile specs to", required = true)
-		private String targetStack;
+		public String targetStack;
 		@Parameter(names = "--sofimaFieldUri", description = "URI of the SOFIMA displacement field N5 container", required = true)
-		private String sofimaFieldUri;
+		public String sofimaFieldUri;
 		@Parameter(names = "--scale", description = "Full-resolution pixels per field pixel, i.e. the factor by which the field is downsampled in x and y (e.g. 40); derived from the stack bounds and the field dimensions if omitted")
-		private Double scale;
+		public Double scale;
 		@Parameter(names = "--completeTargetStack", description = "Complete the target stack after all layers have been saved")
-		private boolean completeTargetStack = false;
+		public boolean completeTargetStack = false;
 		@Parameter(names = "--numThreads", description = "Number of tiles within a layer to process concurrently (default: 1)")
-		private int numThreads = 1;
+		public int numThreads = 1;
 	}
 
 	public static void main(final String[] args) {
