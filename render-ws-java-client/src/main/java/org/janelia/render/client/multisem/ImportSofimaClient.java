@@ -59,7 +59,7 @@ public class ImportSofimaClient {
 	public static class Parameters extends CommandLineParameters {
 		@ParametersDelegate
 		public final RenderWebServiceParameters renderParams = new RenderWebServiceParameters();
-		@Parameter(names = "--stack", description = "Source stack to which the displacement field is added", required = true)
+		@Parameter(names = "--stack", description = "Source stack from which tile specs are read", required = true)
 		public String stack;
 		@ParametersDelegate
 		public SofimaParameters sofima = new SofimaParameters();
