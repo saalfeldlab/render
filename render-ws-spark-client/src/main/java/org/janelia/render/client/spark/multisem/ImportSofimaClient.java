@@ -164,9 +164,9 @@ public class ImportSofimaClient
             return targetStackId;
         };
 
-        final List<StackId> targetStackIds = rddStacks.map(importFieldFunction).collect();
+        final long numImportedStacks = rddStacks.map(importFieldFunction).count();
 
-        LOG.info("run: exit, added displacement field to {} stack(s)", targetStackIds.size());
+        LOG.info("run: exit, added displacement field to {} stack(s)", numImportedStacks);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ImportSofimaClient.class);
