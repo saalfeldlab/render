@@ -83,7 +83,7 @@ public class TileIdHackClient
         // nothing to validate
     }
 
-    /** Run the client as part of an alignment pipeline. */
+    /** Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#HACK_TILE_ID HACK_TILE_ID} step. */
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
@@ -97,11 +97,6 @@ public class TileIdHackClient
         final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(rawNamingGroup);
         final Parameters clientParameters = new Parameters(multiProject);
         copyStackAndFixTileIds(sparkContext, clientParameters);
-    }
-
-    @Override
-    public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.HACK_TILE_ID;
     }
 
     private void copyStackAndFixTileIds(final JavaSparkContext sparkContext,

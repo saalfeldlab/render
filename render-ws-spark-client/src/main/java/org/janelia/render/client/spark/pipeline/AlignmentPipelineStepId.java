@@ -10,6 +10,7 @@ import org.janelia.render.client.spark.match.CopyMatchClient;
 import org.janelia.render.client.spark.match.MultiStagePointMatchClient;
 import org.janelia.render.client.spark.multisem.BeamCorrectionSparkClient;
 import org.janelia.render.client.spark.multisem.CreepCorrectionSparkClient;
+import org.janelia.render.client.spark.multisem.ImportSofimaClient;
 import org.janelia.render.client.spark.multisem.LayerAsTileClient;
 import org.janelia.render.client.spark.multisem.MFOVAsTileClient;
 import org.janelia.render.client.spark.multisem.MFOVMontageMatchPatchClient;
@@ -45,7 +46,8 @@ public enum AlignmentPipelineStepId {
     RENDER_TILES(RenderTilesClient::new),
     MFOV_AS_TILE(MFOVAsTileClient::new),
     RENAME_MATCH_COLLECTIONS(MatchCollectionRenameClient::new),
-    LAYER_AS_TILE(LayerAsTileClient::new);
+    LAYER_AS_TILE(LayerAsTileClient::new),
+    IMPORT_SOFIMA(ImportSofimaClient::new);
 
     private final Supplier<AlignmentPipelineStep> stepClientSupplier;
 

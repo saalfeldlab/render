@@ -116,7 +116,7 @@ public class MFOVAsTileClient
                                                                   pipelineParameters.getMfovAsTile());
     }
 
-    /** Run the client as part of an alignment pipeline. */
+    /** Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#MFOV_AS_TILE MFOV_AS_TILE} step. */
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
@@ -132,11 +132,6 @@ public class MFOVAsTileClient
         clientParameters.multiProject = pipelineParameters.getMultiProject(otherNamingGroup);
         clientParameters.mfovAsTile = pipelineParameters.getMfovAsTile();
         run(sparkContext, clientParameters);
-    }
-
-    @Override
-    public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.RENDER_TILES;
     }
 
     private void run(final JavaSparkContext sparkContext,

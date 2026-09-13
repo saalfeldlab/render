@@ -53,7 +53,6 @@ import org.janelia.render.client.spark.match.MultiStagePointMatchClient;
 import org.janelia.render.client.spark.newsolver.DistributedAffineBlockSolverClient;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
-import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,7 +116,7 @@ public class LayerAsTileClient
                                                                   pipelineParameters.getLayerAsTile());
     }
 
-    /** Run the client as part of an alignment pipeline. */
+    /** Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#LAYER_AS_TILE LAYER_AS_TILE} step. */
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
@@ -125,11 +124,6 @@ public class LayerAsTileClient
         clientParameters.multiProject = pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
         clientParameters.layerAsTile = pipelineParameters.getLayerAsTile();
         run(sparkContext, clientParameters);
-    }
-
-    @Override
-    public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.RENDER_TILES;
     }
 
     private void run(final JavaSparkContext sparkContext,
@@ -428,7 +422,7 @@ public class LayerAsTileClient
 
         }
 
-        if (clusterCountErrors.length() > 0) {
+        if (! clusterCountErrors.isEmpty()) {
             throw new IOException("The following match collections do not have one single cluster: " + clusterCountErrors);
         }
     }
@@ -490,7 +484,7 @@ public class LayerAsTileClient
                                                            stackWithZValues.getLastZ())
                         .getTileSpecs().stream()
                         .sorted(Comparator.comparing(TileSpec::getZ))
-                        .collect(Collectors.toList());
+                        .toList();
 
         // Derive the clusters from every stored pair.  Looping over all pGroup ids covers each pair
         // exactly once regardless of the p/q order the pair was stored with.

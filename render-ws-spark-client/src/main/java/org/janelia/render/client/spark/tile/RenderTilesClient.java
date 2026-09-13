@@ -21,7 +21,6 @@ import org.janelia.render.client.parameter.TileRenderParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
-import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +85,7 @@ public class RenderTilesClient
                                                                   pipelineParameters.getTileCluster());
     }
 
-    /** Run the client as part of an alignment pipeline. */
+    /** Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#RENDER_TILES RENDER_TILES} step. */
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
@@ -96,11 +95,6 @@ public class RenderTilesClient
         clientParameters.tileRender = pipelineParameters.getTileRender();
 
         renderTiles(sparkContext, clientParameters);
-    }
-
-    @Override
-    public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.RENDER_TILES;
     }
 
     public void renderTiles(final JavaSparkContext sparkContext,

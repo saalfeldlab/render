@@ -10,8 +10,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
 import org.apache.spark.api.java.JavaSparkContext;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.render.client.ClientRunner;
@@ -21,7 +19,6 @@ import org.janelia.render.client.parameter.MatchCollectionRenameParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
-import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +72,7 @@ public class MatchCollectionRenameClient
         matchCollectionRename.validate();
     }
 
-    /** Run the client as part of an alignment pipeline. */
+    /** Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#RENAME_MATCH_COLLECTIONS RENAME_MATCH_COLLECTIONS} step. */
     @Override
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
@@ -85,11 +82,6 @@ public class MatchCollectionRenameClient
 
         renameMatchCollections(multiProject.getBaseDataUrl(),
                                pipelineParameters.getMatchCollectionRename());
-    }
-
-    @Override
-    public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.RENAME_MATCH_COLLECTIONS;
     }
 
     public void renameMatchCollections(final String baseDataUrl,
@@ -104,7 +96,7 @@ public class MatchCollectionRenameClient
         final List<String> existingNames = ownerDataClient.getOwnerMatchCollections().stream()
                 .map(mcmd -> mcmd.getCollectionId().getName())
                 .sorted()
-                .collect(Collectors.toList());
+                .toList();
 
         final Pattern sourcePattern = matchCollectionRename.buildSourceNamePattern();
 

@@ -28,7 +28,6 @@ import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.match.ClusterCountClient;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
-import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -161,7 +160,7 @@ public class MFOVMontageMatchPatchClient
         }
     }
 
-    /** Run the client as part of an alignment pipeline. */
+    /** Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#PATCH_MFOV_MONTAGE_MATCHES PATCH_MFOV_MONTAGE_MATCHES} step. */
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IOException {
@@ -178,11 +177,6 @@ public class MFOVMontageMatchPatchClient
                                         patchParameters,
                                         pipelineParameters.getTileCluster());
         }
-    }
-
-    @Override
-    public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.PATCH_MFOV_MONTAGE_MATCHES;
     }
 
     private void patchMFOVs(final JavaSparkContext sparkContext,

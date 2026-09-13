@@ -87,7 +87,7 @@ public class BeamCorrectionSparkClient
         beamCorrection.validate();
     }
 
-    /** Run the client as part of an alignment pipeline. */
+    /** Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#CORRECT_BEAM_INTENSITY CORRECT_BEAM_INTENSITY} step. */
     @Override
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
@@ -105,11 +105,6 @@ public class BeamCorrectionSparkClient
         correctBeamIntensity(sparkContext,
                              multiProject,
                              pipelineParameters.getBeamCorrection());
-    }
-
-    @Override
-    public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.CORRECT_BEAM_INTENSITY;
     }
 
     public void correctBeamIntensity(final JavaSparkContext sparkContext,

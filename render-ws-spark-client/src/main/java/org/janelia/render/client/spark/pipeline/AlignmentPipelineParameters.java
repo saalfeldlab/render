@@ -26,6 +26,7 @@ import org.janelia.render.client.parameter.MatchCollectionRenameParameters;
 import org.janelia.render.client.parameter.MatchCopyParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.SofimaParameters;
 import org.janelia.render.client.parameter.TileRemovalSetup;
 import org.janelia.render.client.parameter.ScapeParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
@@ -65,10 +66,12 @@ public class AlignmentPipelineParameters
     private final MFOVAsTileParameters mfovAsTile;
     private final LayerAsTileParameters layerAsTile;
     private final TileRemovalSetup tileRemoval;
+    private final SofimaParameters sofima;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -111,7 +114,8 @@ public class AlignmentPipelineParameters
                                        final TileRenderParameters tileRender,
                                        final MFOVAsTileParameters mfovAsTile,
                                        final LayerAsTileParameters layerAsTile,
-                                       final TileRemovalSetup tileRemoval) {
+                                       final TileRemovalSetup tileRemoval,
+                                       final SofimaParameters sofima) {
         this.multiProject = multiProject;
         this.pipelineStackGroups = pipelineStackGroups;
         this.pipelineSteps = pipelineSteps;
@@ -133,6 +137,7 @@ public class AlignmentPipelineParameters
         this.mfovAsTile = mfovAsTile;
         this.layerAsTile = layerAsTile;
         this.tileRemoval = tileRemoval;
+        this.sofima = sofima;
     }
 
     public MultiProjectParameters getMultiProject(final StackIdNamingGroup withNamingGroup) {
@@ -235,6 +240,10 @@ public class AlignmentPipelineParameters
 
     public TileRemovalSetup getTileRemoval() {
         return tileRemoval;
+    }
+
+    public SofimaParameters getSofima() {
+        return sofima;
     }
 
     /**

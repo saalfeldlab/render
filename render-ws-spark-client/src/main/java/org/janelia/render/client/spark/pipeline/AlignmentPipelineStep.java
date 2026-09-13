@@ -41,9 +41,4 @@ public interface AlignmentPipelineStep {
     void runPipelineStep(final JavaSparkContext sparkContext,
                          final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException;
-
-    /**
-     * @return the default identifier for this step.
-     */
-    AlignmentPipelineStepId getDefaultStepId();
 }
