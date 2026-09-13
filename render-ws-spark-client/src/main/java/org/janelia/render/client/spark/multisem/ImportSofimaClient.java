@@ -151,13 +151,7 @@ public class ImportSofimaClient
             javaClientParameters.renderParams.owner = sourceStackId.getOwner();
             javaClientParameters.renderParams.project = sourceStackId.getProject();
             javaClientParameters.stack = sourceStackId.getStack();
-            javaClientParameters.targetStack = targetStackId.getStack();
-            // honor any z range configured for the pipeline instead of re-deriving all z for the stack
-            javaClientParameters.zRangeParams.minZ = stackWithAllZ.getFirstZ();
-            javaClientParameters.zRangeParams.maxZ = stackWithAllZ.getLastZ();
-            javaClientParameters.sofimaFieldUri = sofima.getSofimaFieldUri();
-            javaClientParameters.scale = sofima.getScale();
-            javaClientParameters.completeTargetStack = true;
+            javaClientParameters.sofima = sofima;
             javaClientParameters.numThreads = numThreads;
 
             final org.janelia.render.client.multisem.ImportSofimaClient javaClient =

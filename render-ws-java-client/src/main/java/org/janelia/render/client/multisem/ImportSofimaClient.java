@@ -18,7 +18,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
-import org.janelia.render.client.parameter.ZRangeParameters;
+import org.janelia.render.client.parameter.SofimaParameters;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,9 +43,9 @@ import org.slf4j.LoggerFactory;
  * scale is left at its default, which suits SOFIMA output with vectors already in full-resolution units.
  * Layers are processed in order, but the tiles within a layer are processed by {@code --numThreads} threads, which is
  * what parallelizes the field chunk reads that deriving the bounding boxes triggers.
- * If {@code --targetStack} is given, the modified tile specs are written there (the stack is derived from the source
- * if it does not yet exist); otherwise they are written back into the source stack. If {@code --completeTargetStack}
- * is set, the target stack is completed once all layers have been saved.
+ * The modified tile specs are written to a target stack named by appending {@code --targetStackSuffix} to the source
+ * stack name (the stack is derived from the source if it does not yet exist), and that target stack is completed once
+ * all layers have been saved.
  *
  * @author Michael Innerberger
  */
@@ -59,18 +59,10 @@ public class ImportSofimaClient {
 	public static class Parameters extends CommandLineParameters {
 		@ParametersDelegate
 		public final RenderWebServiceParameters renderParams = new RenderWebServiceParameters();
-		@ParametersDelegate
-		public final ZRangeParameters zRangeParams = new ZRangeParameters();
 		@Parameter(names = "--stack", description = "Source stack to which the displacement field is added", required = true)
 		public String stack;
-		@Parameter(names = "--targetStack", description = "Stack to save modified tile specs to", required = true)
-		public String targetStack;
-		@Parameter(names = "--sofimaFieldUri", description = "URI of the SOFIMA displacement field N5 container", required = true)
-		public String sofimaFieldUri;
-		@Parameter(names = "--scale", description = "Full-resolution pixels per field pixel, i.e. the factor by which the field is downsampled in x and y (e.g. 40); derived from the stack bounds and the field dimensions if omitted")
-		public Double scale;
-		@Parameter(names = "--completeTargetStack", description = "Complete the target stack after all layers have been saved")
-		public boolean completeTargetStack = false;
+		@ParametersDelegate
+		public SofimaParameters sofima = new SofimaParameters();
 		@Parameter(names = "--numThreads", description = "Number of tiles within a layer to process concurrently (default: 1)")
 		public int numThreads = 1;
 	}
@@ -99,6 +91,8 @@ public class ImportSofimaClient {
 
 	public void addDisplacementField() throws Exception {
 
+		params.sofima.validate();
+
 		final StackMetaData sourceStackMetaData = renderClient.getStackMetaData(params.stack);
 		final Bounds stackBounds = sourceStackMetaData.getStats().getStackBounds();
 
@@ -109,7 +103,7 @@ public class ImportSofimaClient {
 
 		// Open the field up front so that a bad URI fails before any stack is touched, and work out the scale
 		final double scale;
-		try (final N5Reader fieldReader = DisplacementFieldTransform.openPrecomputedReader(params.sofimaFieldUri)) {
+		try (final N5Reader fieldReader = DisplacementFieldTransform.openPrecomputedReader(params.sofima.getSofimaFieldUri())) {
 			// The precomputed dataset lives under the first scale key (see DisplacementFieldTransform); the
 			// layout is [x,y,z,channel], so dim 0 is X and dim 1 is Y.
 			final String scaleKey = fieldReader.list("/")[0];
@@ -119,31 +113,26 @@ public class ImportSofimaClient {
 			// factor; the leftover strip is handled by the transform's mirrored extension.
 			final double xScale = Math.round(stackBounds.getDeltaX() / fieldDimensions[0]);
 			final double yScale = Math.round(stackBounds.getDeltaY() / fieldDimensions[1]);
-			if ((params.scale == null) && (xScale != yScale)) {
+			if ((params.sofima.getScale() == null) && (xScale != yScale)) {
 				// The transform downsamples x and y by the same factor, so a field that does not is not supported.
 				throw new IllegalArgumentException(
 						"derived x and y scales differ (" + xScale + " vs " + yScale + "); pass --scale explicitly");
 			}
-			scale = (params.scale != null) ? params.scale : xScale;
+			scale = (params.sofima.getScale() != null) ? params.sofima.getScale() : xScale;
 
 			LOG.info("addDisplacementField: stack bounds are {}, field {} has dimensions {}, scale is {}, offset is {}",
 					 stackBounds, scaleKey, Arrays.toString(fieldDimensions), scale, Arrays.toString(offset));
 		} catch (final Exception e) {
-			throw new IllegalArgumentException("Failed to process SOFIMA field at " + params.sofimaFieldUri, e);
+			throw new IllegalArgumentException("Failed to process SOFIMA field at " + params.sofima.getSofimaFieldUri(), e);
 		}
 
-		// Set up the target stack
-		final String targetStack = params.targetStack;
-		if (! targetStack.equals(params.stack)) {
-			renderClient.setupDerivedStack(sourceStackMetaData, targetStack);
-		} else {
-			renderClient.ensureStackIsInLoadingState(targetStack, sourceStackMetaData);
-		}
+		// Set up the target stack.  The suffix is validated as non-empty, so the target stack
+		// is always distinct from the source stack and is always derived from it.
+		final String targetStack = params.sofima.getTargetStackId(sourceStackMetaData.getStackId()).getStack();
+		renderClient.setupDerivedStack(sourceStackMetaData, targetStack);
 
 		// Get and process all z values
-		final List<Double> zValues = renderClient.getStackZValues(params.stack,
-																  params.zRangeParams.minZ,
-																  params.zRangeParams.maxZ);
+		final List<Double> zValues = renderClient.getStackZValues(params.stack);
 		LOG.info("addDisplacementField: processing {} layers with {} threads", zValues.size(), params.numThreads);
 
 		// One pool, reused for the tiles of each layer in turn (see addFieldToLayer for why tiles and not layers)
@@ -157,10 +146,8 @@ public class ImportSofimaClient {
 		}
 
 		// Complete the target stack
-		if (params.completeTargetStack) {
-			LOG.info("addDisplacementField: completing stack {}", targetStack);
-			renderClient.setStackState(targetStack, StackMetaData.StackState.COMPLETE);
-		}
+		LOG.info("addDisplacementField: completing stack {}", targetStack);
+		renderClient.setStackState(targetStack, StackMetaData.StackState.COMPLETE);
 
 		LOG.info("addDisplacementField: exit");
 	}
@@ -198,7 +185,7 @@ public class ImportSofimaClient {
 	private String buildDataString(final long fieldZIndex,
 								   final double scale,
 								   final double[] offset) {
-		return params.sofimaFieldUri +
+		return params.sofima.getSofimaFieldUri() +
 			   "?z=" + fieldZIndex +
 			   "&scale=" + scale +
 			   "&offset=" + offset[0] + "," + offset[1];
