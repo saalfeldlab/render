@@ -13,11 +13,11 @@ set -e
 #   /mnt/disks/mongodb_dump_fs/dump/google/02_align/w61_serial_090_to_099/s094_r00/render
 #
 # Optional parameters (if omitted, you will be prompted interactively):
-#   --db        <render|match>
-#   --stage     <00_par|01_match|02_align|03_ic2d_nc4_hist_rs0p5|timestamp>
-#   --project   <w61_serial_NNN_to_NNN>
+#   --db         <render|match>
+#   --stage      <00_par|01_match|02_align|03_ic2d_nc4_hist_rs0p5|04a_layer_as_tile|04b_3d_align|05_sofima|06_ic3d|timestamp>
+#   --project    <w61_serial_NNN_to_NNN>
 #   --slab-group <slab-group>
-#   --pattern   <collection-pattern-regex>
+#   --pattern    <collection-pattern-regex>
 
 # ----------------------------------------------------------------------------
 # Parse optional named parameters
@@ -93,7 +93,7 @@ LOCATION="google"
 
 if [[ -n "${ARG_STAGE}" ]]; then
   case "${ARG_STAGE}" in
-    00_par|01_match|02_align|03_ic2d_nc4_hist_rs0p5|04a_layer_as_tile|04b_3d_align)
+    00_par|01_match|02_align|03_ic2d_nc4_hist_rs0p5|04a_layer_as_tile|04b_3d_align|05_sofima|06_ic3d)
       STAGE="${ARG_STAGE}"
       ;;
     timestamp)
@@ -108,9 +108,9 @@ fi
 if [[ -z "${ARG_STAGE}" && -z "${STAGE}" ]]; then
   echo "
 Select stage:"
-  select STAGE_CHOICE in "00_par" "01_match" "02_align" "03_ic2d_nc4_hist_rs0p5" "timestamp"; do
+  select STAGE_CHOICE in "00_par" "01_match" "02_align" "03_ic2d_nc4_hist_rs0p5" "04a_layer_as_tile" "04b_3d_align" "05_sofima" "06_ic3d" "timestamp"; do
     case "${STAGE_CHOICE}" in
-      00_par|01_match|02_align|03_ic2d_nc4_hist_rs0p5)
+      00_par|01_match|02_align|03_ic2d_nc4_hist_rs0p5|04a_layer_as_tile|04b_3d_align|05_sofima|06_ic3d)
         STAGE="${STAGE_CHOICE}"
         break
         ;;
