@@ -4,6 +4,8 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 
 import java.io.Serializable;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.janelia.alignment.spec.stack.StackId;
 
@@ -18,7 +20,9 @@ public class SofimaParameters
 
     @Parameter(
             names = "--sofimaFieldUri",
-            description = "URI of the SOFIMA displacement field N5 container")
+            description = "URI of the directory containing one SOFIMA displacement field container per slab " +
+                          "(e.g. gs://janelia-spark-test/warp_flow_precomputed_260907, which holds " +
+                          "w61_s070_r00/info, w61_s085_r01/info, ...)")
     public String sofimaFieldUri;
 
     @Parameter(
@@ -46,10 +50,6 @@ public class SofimaParameters
         this.targetStackSuffix = targetStackSuffix;
     }
 
-    public String getSofimaFieldUri() {
-        return sofimaFieldUri;
-    }
-
     public Double getScale() {
         return scale;
     }
@@ -57,6 +57,32 @@ public class SofimaParameters
     /** @return the target stack id derived from the specified source stack id. */
     public StackId getTargetStackId(final StackId sourceStackId) {
         return sourceStackId.withStackSuffix(targetStackSuffix);
+    }
+
+    /**
+     * Each slab has its own precomputed field container under {@link #sofimaFieldUri}, named for the slab
+     * (e.g. {@code .../warp_flow_precomputed_260907/w61_s070_r00}).  Source stack names start with that
+     * same slab name, so the container is derived from the stack name rather than being configured per stack.
+     *
+     * @param  stack  name of the source stack (e.g. w61_s070_r00_gc_icc_par_asoi_3d).
+     *
+     * @return the URI of the displacement field container for the specified stack.
+     *
+     * @throws IllegalArgumentException
+     *   if a slab name cannot be derived from the specified stack name.
+     */
+    public String getFieldUriForStack(final String stack)
+            throws IllegalArgumentException {
+
+        final Matcher matcher = SLAB_PATTERN.matcher(stack);
+        if (! matcher.find()) {
+            throw new IllegalArgumentException(
+                    "cannot derive a SOFIMA field container from stack '" + stack +
+                    "' because the stack name does not start with a slab name (e.g. w61_s070_r00)");
+        }
+
+        // trim any trailing slashes so that a configured uri with or without one works the same way
+        return sofimaFieldUri.replaceAll("/+$", "") + "/" + matcher.group(1);
     }
 
     /**
@@ -76,6 +102,9 @@ public class SofimaParameters
             throw new IllegalArgumentException("targetStackSuffix must be defined");
         }
     }
+
+    /** Slab name at the start of a source stack name (e.g. w61_s070_r00 in w61_s070_r00_gc_icc_par_asoi_3d). */
+    private static final Pattern SLAB_PATTERN = Pattern.compile("^(w\\d+_s\\d+_r\\d+)");
 
     @Override
     public String toString() {
