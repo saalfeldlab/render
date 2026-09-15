@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Moves each queried location by a displacement vector interpolated from a field on disk. The field is a pull
  * map (see {@link #extractAndTransform}), so applying it means inverting the field, done in {@link #applyInPlace}
- * by fixed-point iteration.
+ * by a Newton iteration.
  */
 public class DisplacementFieldTransform
         implements CoordinateTransform {
@@ -209,20 +209,46 @@ public class DisplacementFieldTransform
                     "displacement field has not been loaded; call init(String) before applying this transform");
         }
 
-        // The (negated) field vector belongs to the target location, not to the queried source location, so the
-        // target solves t = source + d(t). Iterate t <- source + d(t) from t = source; this converges (linearly,
-        // at the rate of the field's Jacobian norm) for any field whose Jacobian norm stays below one, which is
-        // the same condition under which the field is invertible at all.
-        final double[] target = { location[0], location[1] };
+        // The (negated) field vector belongs to the target location, not to the queried source
+        // location, so the target solves f(t) = t - d(t) - source = 0 via Newton's method.
+        final double[] currentPos = { location[0], location[1] };
+        final double[] shiftedPos = new double[2];
         final double[] vector = new double[2];
+        final double[] shiftedVector = new double[2];
+        final double h = this.scale * JACOBIAN_STEP_IN_FIELD_PIXELS;
         double step = Double.POSITIVE_INFINITY;
+
         for (int i = 0; (i < MAX_INVERSION_ITERATIONS) && (step > INVERSION_TOLERANCE); i++) {
-            lookUpVector(target, vector);
-            final double x = location[0] + vector[0];
-            final double y = location[1] + vector[1];
-            step = Math.max(Math.abs(x - target[0]), Math.abs(y - target[1]));
-            target[0] = x;
-            target[1] = y;
+            lookUpVector(currentPos, vector);
+            final double fx = currentPos[0] - vector[0] - location[0];
+            final double fy = currentPos[1] - vector[1] - location[1];
+
+            // Jacobian of f by forward differences: J = I - dd/dt
+            shiftedPos[0] = currentPos[0] + h;
+            shiftedPos[1] = currentPos[1];
+            lookUpVector(shiftedPos, shiftedVector);
+            double j00 = 1.0 - (shiftedVector[0] - vector[0]) / h;
+            double j10 =     - (shiftedVector[1] - vector[1]) / h;
+
+            shiftedPos[0] = currentPos[0];
+            shiftedPos[1] = currentPos[1] + h;
+            lookUpVector(shiftedPos, shiftedVector);
+            double j01 =     - (shiftedVector[0] - vector[0]) / h;
+            double j11 = 1.0 - (shiftedVector[1] - vector[1]) / h;
+
+            double det = j00 * j11 - j01 * j10;
+            if (Math.abs(det) < MIN_JACOBIAN_DETERMINANT) {
+                // Folded (non-invertible) field: fall back to a plain fixed-point step rather than blowing up.
+                j00 = 1.0; j01 = 0.0;
+                j10 = 0.0; j11 = 1.0;
+                det = 1.0;
+            }
+
+            final double dx = (j11 * fx - j01 * fy) / det;
+            final double dy = (j00 * fy - j10 * fx) / det;
+            step = Math.max(Math.abs(dx), Math.abs(dy));
+            currentPos[0] -= dx;
+            currentPos[1] -= dy;
         }
 
         // A non-invertible field may still exceed the tolerance after the cap; use the last estimate rather than
@@ -235,8 +261,8 @@ public class DisplacementFieldTransform
                      MAX_INVERSION_ITERATIONS, location[0], location[1], toDataString(), step);
         }
 
-        location[0] = target[0];
-        location[1] = target[1];
+        location[0] = currentPos[0];
+        location[1] = currentPos[1];
     }
 
     /**
@@ -328,6 +354,10 @@ public class DisplacementFieldTransform
     /** Full-resolution pixels of movement below which the inversion in {@link #applyInPlace} is considered done. */
     private static final double INVERSION_TOLERANCE = 1e-4;
     private static final int MAX_INVERSION_ITERATIONS = 20;
+    /** Finite-difference step for the Jacobian in {@link #applyInPlace}, as a fraction of a field pixel. */
+    private static final double JACOBIAN_STEP_IN_FIELD_PIXELS = 0.25;
+    /** Below this |det J| the field is treated as folded and the Newton step degrades to a fixed-point step. */
+    private static final double MIN_JACOBIAN_DETERMINANT = 1e-6;
 
     private static final Set<String> VALID_PARAMETERS = Set.of("z", "scale", "offset", "vectorScale");
 }
