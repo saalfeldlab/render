@@ -91,7 +91,15 @@ RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/*jdk*)"'; } >> ~/.mavenrc  && \
 
 # 5. Deploy Web Service and remove all unneeded source and build artifacts
 #    leaving only render/deploy and render/startup_mongodb_and_jetty.sh
+#
+#    The neuroglancer build is deployed as its own webapp next to render-ws.war so that it is served
+#    from http://<host>:8080/ng/ .  Serving it from the same origin as http://<host>:8080/render-ws/v1/
+#    avoids the CORS and mixed content restrictions that block a neuroglancer hosted elsewhere from
+#    reading render data over plain http.
+#
+#    NOTE: the ng copy must happen before the rm -rf below removes the render-ws-with-mongo-db directory.
 RUN cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war && \
+    cp -r ./render-ws-with-mongo-db/ng deploy/jetty_base/webapps/ng && \
     rm -rf .[dgi]* Dockerfile LICENSE README.md docker-build-and-push.sh docs examples pom.xml \
     render-app render-ws render-ws-java-client render-ws-spark-client render-ws-with-mongo-db trakem2-scripts \
     /tmp/extract* /root/.m2
