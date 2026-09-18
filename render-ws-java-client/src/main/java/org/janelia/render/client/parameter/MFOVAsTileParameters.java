@@ -354,10 +354,14 @@ public class MFOVAsTileParameters
                                                  null,
                                                  null));
 
+        // NOTE: the subList view must be copied into an ArrayList because List.of(...).subList(...)
+        //       returns a java.util.ImmutableCollections$SubList which is not serializable and
+        //       would make the spark closure in MultiStagePointMatchClient fail with
+        //       'Task not serializable' when these run parameters are distributed
         return new MatchRunParameters("crossMfovAsTileRun",
                                       buildMatchCommonParameters(10),
                                       buildTilePairDerivationParameters(0.1, 1, true),
-                                      allStageParametersList.subList(0, passCount));
+                                      new ArrayList<>(allStageParametersList.subList(0, passCount)));
     }
 
     public static MatchCommonParameters buildMatchCommonParameters(final int maxPairsPerStackBatch) {
