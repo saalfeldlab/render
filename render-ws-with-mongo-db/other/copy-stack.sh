@@ -4,10 +4,10 @@ set -e
 
 # change these variables for your use case ...
 OWNER="hess_wafers_60_61"
-PROJECT="w61_serial_100_to_109"
-FROM_STACK="w61_s109_r00_gc_par_align_original"
-TO_STACK="w61_s109_r00_gc_par_align"
-QUERY_PARAMETERS="?z=11&z=13"                      # leave empty to copy all z layers
+PROJECT="w61_serial_070_to_079"
+FROM_STACK="w61_s070_r00_gc_icc_par_ta"
+TO_STACK="w61_s070_r00_gc_icc_par_tb"
+#QUERY_PARAMETERS="?z=11&z=13"                      # leave empty to copy all z layers
 
 # ---------------------------------------------
 PROJECT_URL="http://localhost:8080/render-ws/v1/owner/${OWNER}/project/${PROJECT}"
