@@ -32,6 +32,19 @@
 
                             <outputFile>target/${project.artifactId}-${project.version}-standalone.jar</outputFile>
 
+                            <relocations>
+                                <!--
+                                    n5 4.x GzipCompression.decode uses GzipCompressorInputStream.builder(), which was added
+                                    in commons-compress 1.28.0 (pom-scijava 45.1.0 manages that version).  Spark 4.0.4 ships
+                                    commons-compress 1.27.1 and the Dataproc classpath wins over this jar, so without
+                                    relocation n5 resolves against 1.27.1 and throws NoSuchMethodError.
+                                -->
+                                <relocation>
+                                    <pattern>org.apache.commons.compress</pattern>
+                                    <shadedPattern>org.janelia.shaded.org.apache.commons.compress</shadedPattern>
+                                </relocation>
+                            </relocations>
+
                             <transformers>
 
                                 <!--

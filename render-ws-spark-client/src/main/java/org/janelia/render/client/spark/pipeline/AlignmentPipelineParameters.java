@@ -27,6 +27,7 @@ import org.janelia.render.client.parameter.MatchCopyParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.SofimaParameters;
+import org.janelia.render.client.parameter.StackRenameParameters;
 import org.janelia.render.client.parameter.TileRemovalSetup;
 import org.janelia.render.client.parameter.ScapeParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
@@ -67,10 +68,12 @@ public class AlignmentPipelineParameters
     private final LayerAsTileParameters layerAsTile;
     private final TileRemovalSetup tileRemoval;
     private final SofimaParameters sofima;
+    private final StackRenameParameters stackRename;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -115,7 +118,8 @@ public class AlignmentPipelineParameters
                                        final MFOVAsTileParameters mfovAsTile,
                                        final LayerAsTileParameters layerAsTile,
                                        final TileRemovalSetup tileRemoval,
-                                       final SofimaParameters sofima) {
+                                       final SofimaParameters sofima,
+                                       final StackRenameParameters stackRename) {
         this.multiProject = multiProject;
         this.pipelineStackGroups = pipelineStackGroups;
         this.pipelineSteps = pipelineSteps;
@@ -138,6 +142,7 @@ public class AlignmentPipelineParameters
         this.layerAsTile = layerAsTile;
         this.tileRemoval = tileRemoval;
         this.sofima = sofima;
+        this.stackRename = stackRename;
     }
 
     public MultiProjectParameters getMultiProject(final StackIdNamingGroup withNamingGroup) {
@@ -244,6 +249,10 @@ public class AlignmentPipelineParameters
 
     public SofimaParameters getSofima() {
         return sofima;
+    }
+
+    public StackRenameParameters getStackRename() {
+        return stackRename;
     }
 
     /**

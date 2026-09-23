@@ -82,8 +82,15 @@ public class LayerMFOV
         return name.substring(name.lastIndexOf('m'));
     }
 
-    public String toMfovAsTileName(final String stackName) {
-        return String.format("%s_z%03d_%s", stackName, (int) z, name);
+    /**
+     * @return w61_s177_r01_gc_bc_pa_scan005_z002_m0030 for stack w61_s177_r01_gc_bc_pa,
+     *         scan name scan005, z 2, and MFOV name m0030.
+     *         NOTE: the MFOV name must remain the last element of the identifier because
+     *         MFOVAsTileClient derives it from the text after the last underscore.
+     */
+    public String toMfovAsTileName(final String stackName,
+                                   final String scanName) {
+        return String.format("%s_%s_z%03d_%s", stackName, scanName, (int) z, name);
     }
 
     public String toJson() {
@@ -148,6 +155,10 @@ public class LayerMFOV
         final String renderParametersUrl = buildRenderParametersUrl(baseDataUrl, stackId, renderScale);
         final RenderParameters renderParameters = RenderParameters.loadFromUrl(renderParametersUrl);
 
+        // all SFOVs in an MFOV come from the same scan, so the first one identifies the MFOV's scan
+        final TileSpec firstSfovTileSpec = renderParameters.getTileSpecs().getFirst();
+        final String scanName = MultiSemUtilities.getScanStringForTileId(firstSfovTileSpec.getTileId());
+
         final int scaledImageWidth = (int) Math.floor(renderParameters.width * renderScale);
         final int scaledImageHeight = (int) Math.floor(renderParameters.height * renderScale);
         final double x = renderParameters.x * renderScale;
@@ -156,7 +167,7 @@ public class LayerMFOV
 
         final TileSpec tileSpec = new TileSpec();
 
-        tileSpec.setTileId(this.toMfovAsTileName(stackId.getStack()));
+        tileSpec.setTileId(this.toMfovAsTileName(stackId.getStack(), scanName));
         tileSpec.setZ(z);
         tileSpec.setWidth((double) scaledImageWidth);
         tileSpec.setHeight((double) scaledImageHeight);
@@ -179,7 +190,6 @@ public class LayerMFOV
         final String pngImageUrl = renderParametersUrl.replace("render-parameters", "png-image") +
                                    "&maxTileSpecsToRender=" + MultiSemUtilities.NUMBER_OF_TILES_IN_MFOV;
 
-        final TileSpec firstSfovTileSpec = renderParameters.getTileSpecs().get(0);
         final ImageAndMask firstSfovImageAndMask = firstSfovTileSpec.getFirstMipmapEntry().getValue();
         final ImageLoader.LoaderType firstSfovImageLoaderType = firstSfovImageAndMask.getImageLoaderType();
         ImageLoader.LoaderType loaderType = null;

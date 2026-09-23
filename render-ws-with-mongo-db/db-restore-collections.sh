@@ -8,6 +8,9 @@
 # The --exclude-pattern option skips any collections whose dump file path matches EXCLUDE_PATTERN.
 # Example EXCLUDE_PATTERNs are: 'match', '__tile$', 'w60.*transform'
 #
+# Excluded render stacks are also removed from the admin__stack_meta_data collection after the
+# restore, since that one collection holds the metadata for every stack in the dump.
+#
 # Restore dump files to the mongodb database running on the current Google Cloud VM container.
 #
 # If you do not specify a dump pattern, you will be prompted to select one or more dump directories within
@@ -178,6 +181,8 @@ echo
 
 URI="mongodb://localhost:27017"
 
+RESTORED_STACK_META_DATA=false
+
 shopt -s nullglob
 for DUMP_DIR in "${SELECTED[@]}"; do
   for DUMP_FILE in "${DUMP_DIR}"/*.bson.gz; do
@@ -209,5 +214,54 @@ for DUMP_DIR in "${SELECTED[@]}"; do
     # notes: --dryRun option exists
     #        you can load into a different database and/or collection by specifying --db and --collection
     mongorestore --uri="${URI}" --gzip "${DUMP_FILE}"
+
+    if [[ "$(basename "${DUMP_FILE}")" == "admin__stack_meta_data.bson.gz" ]]; then
+      RESTORED_STACK_META_DATA=true
+    fi
   done
 done
+
+# ----------------------------------------------------------------------------
+# Remove stack metadata for excluded stacks
+#
+# The render db keeps the metadata for every stack in one admin__stack_meta_data collection,
+# so --exclude-pattern cannot skip part of it the way it skips the per-stack dump files.
+# Without this cleanup, excluded stacks are listed by the web service even though none of
+# their tile, section, or transform data was restored.
+#
+# Only stacks that match the exclude pattern and have no tile collection are removed,
+# so stacks that were loaded by an earlier restore are left alone.
+
+if [[ -n "$EXCLUDE_PATTERN" ]] && ${RESTORED_STACK_META_DATA}; then
+
+  echo
+  echo
+  echo "removing metadata for stacks matching exclude pattern '${EXCLUDE_PATTERN}' that have no tile data ..."
+  echo
+
+  EXCLUDE_PATTERN_VALUE="${EXCLUDE_PATTERN}" mongosh "${URI}/render" --quiet --eval "
+    const excludeRegex = new RegExp(process.env.EXCLUDE_PATTERN_VALUE);
+    const tileCollections = new Set(db.getCollectionNames().filter(c => c.endsWith('__tile')));
+    const removedStacks = [];
+
+    db.admin__stack_meta_data.find().forEach(smd => {
+      const stackId = smd.stackId;
+      if (excludeRegex.test(stackId.stack)) {
+        const tileCollection = stackId.owner + '__' + stackId.project + '__' + stackId.stack + '__tile';
+        if (! tileCollections.has(tileCollection)) {
+          db.admin__stack_meta_data.deleteOne({ _id: smd._id });
+          removedStacks.push(stackId.stack);
+        }
+      }
+    });
+
+    if (removedStacks.length === 0) {
+      print('  no stack metadata needed to be removed');
+    } else {
+      removedStacks.sort().forEach(stack => print('  removed metadata for ' + stack));
+    }
+  "
+
+  echo
+
+fi
