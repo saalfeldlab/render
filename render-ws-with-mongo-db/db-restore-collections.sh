@@ -239,8 +239,8 @@ if [[ -n "$EXCLUDE_PATTERN" ]] && ${RESTORED_STACK_META_DATA}; then
   echo "removing metadata for stacks matching exclude pattern '${EXCLUDE_PATTERN}' that have no tile data ..."
   echo
 
-  mongosh "${URI}/render" --quiet --eval "
-    const excludeRegex = new RegExp('${EXCLUDE_PATTERN}');
+  EXCLUDE_PATTERN_VALUE="${EXCLUDE_PATTERN}" mongosh "${URI}/render" --quiet --eval "
+    const excludeRegex = new RegExp(process.env.EXCLUDE_PATTERN_VALUE);
     const tileCollections = new Set(db.getCollectionNames().filter(c => c.endsWith('__tile')));
     const removedStacks = [];
 
