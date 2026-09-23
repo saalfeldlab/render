@@ -20,13 +20,13 @@ public class Layer {
 
 
     /**
-     * @return w61_s071_r00_gc_icc_par_asoi_z002_scan005 for stack w61_s071_r00_gc_icc_par_asoi,
-     *         z 2, and scan name scan005.
+     * @return w61_s071_r00_gc_icc_par_asoi_scan005_z002 for stack w61_s071_r00_gc_icc_par_asoi,
+     *         scan name scan005, and z 2.
      */
     public static String toLayerAsTileName(final String stackName,
-                                           final int z,
-                                           final String scanName) {
-        return String.format("%s_z%03d_%s", stackName, z, scanName);
+                                           final String scanName,
+                                           final int z) {
+        return String.format("%s_%s_z%03d", stackName, scanName, z);
     }
 
     /**
@@ -65,7 +65,7 @@ public class Layer {
         final int numberOfTilesInZLayer = renderParameters.numberOfTileSpecs();
 
         // all SFOVs in a z layer come from the same scan, so the first one identifies the layer's scan
-        final TileSpec firstSfovTileSpec = renderParameters.getTileSpecs().get(0);
+        final TileSpec firstSfovTileSpec = renderParameters.getTileSpecs().getFirst();
         final String scanName = MultiSemUtilities.getScanStringForTileId(firstSfovTileSpec.getTileId());
 
         final double scaledImageWidth = Math.floor(renderParameters.width * renderScale);
@@ -75,7 +75,7 @@ public class Layer {
 
         final TileSpec tileSpec = new TileSpec();
 
-        tileSpec.setTileId(toLayerAsTileName(stackId.getStack(), z.intValue(), scanName));
+        tileSpec.setTileId(toLayerAsTileName(stackId.getStack(), scanName, z.intValue()));
         tileSpec.setZ(z);
         tileSpec.setWidth(scaledImageWidth);
         tileSpec.setHeight(scaledImageHeight);
