@@ -244,7 +244,11 @@ else
     NAMES_TO_REMOVE=("${SELECTED_NAMES[@]}")
   fi
 
-  read -rp "Last check ... do you want to ${REMOVE_OR_KEEP} these ${ITEM_PLURAL}? (y/n): " CONFIRM
+  if [[ ${REMOVE_OR_KEEP} == "keep" ]]; then
+    read -rp "Last check ... remove all other ${ITEM_PLURAL} (keeping the ones listed above)? (y/n): " CONFIRM
+  else
+    read -rp "Last check ... remove these ${ITEM_PLURAL}? (y/n): " CONFIRM
+  fi
   if [[ ${CONFIRM} =~ ^[Yy]$ ]]; then
     removeItems
   else
