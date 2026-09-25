@@ -239,10 +239,13 @@ public class DownsampleHelper
                 description = "Unit description for stack resolution values, e.g. nm, um, ...")
         public String stackResolutionUnit = "nm";
 
+        // Required because NeuroglancerAttributes copies these values with new ArrayList<>(translate)
+        // and would fail with a confusing NullPointerException if they were omitted.  For datasets
+        // exported by N5Client, use the full scale stack bounds minimum (see N5Client.run).
         @Parameter(
                 names = "--translate",
-                description = "Translation pixels for the full scale x, y, and z axis, e.g. 100,-77,1.  " +
-                              "Omit if translation is not needed.")
+                description = "Translation pixels for the full scale x, y, and z axis, e.g. 100,-77,1",
+                required = true)
         public String translate;
 
         public int[] getDownsampleFactors() {
@@ -255,9 +258,13 @@ public class DownsampleHelper
 
         }
 
+        /**
+         * @return the translation pixels, or null if none were specified.
+         */
         public List<Long> getTranslatePixels() {
-            return Arrays.stream(Util.parseCSIntArray(translate)).asLongStream()
-                    .boxed().collect(Collectors.toList());
+            final int[] translatePixels = Util.parseCSIntArray(translate);
+            return translatePixels == null ? null :
+                   Arrays.stream(translatePixels).asLongStream().boxed().collect(Collectors.toList());
         }
     }
 
