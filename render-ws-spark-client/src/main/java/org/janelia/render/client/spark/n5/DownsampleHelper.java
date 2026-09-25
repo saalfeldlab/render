@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -15,6 +16,7 @@ import org.janelia.alignment.util.NeuroglancerAttributes;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.spark.downsample.N5DownsamplerSpark;
 import org.janelia.saalfeldlab.n5.spark.supplier.N5WriterSupplier;
@@ -100,6 +102,22 @@ public class DownsampleHelper
                 new N5Factory().openWriter(StorageFormat.N5, basePathOrStorageUrl);
 
         final N5Writer n5 = n5Supplier.get();
+
+        // The render export records the stack bounds, so the translation only has to be supplied
+        // when this is run against a dataset that was not written by N5Client.
+        List<Long> resolvedTranslatePixels = translatePixels;
+
+        if (resolvedTranslatePixels == null) {
+            resolvedTranslatePixels = readExportedTranslatePixels(n5, sZeroDatasetPath);
+        }
+
+        if (resolvedTranslatePixels == null) {
+            // NeuroglancerAttributes cannot accept null, so use zeros for each axis
+            resolvedTranslatePixels = Collections.nCopies(stackResolutionValues.size(), 0L);
+            LOG.info("run: translation pixels were not found in {}, assuming no translation is needed",
+                     sZeroDatasetPath);
+        }
+
         final DatasetAttributes fullScaleAttributes = n5.getDatasetAttributes(sZeroDatasetPath);
         final long[] dimensions = fullScaleAttributes.getDimensions();
         final int numberOfDimensions = dimensions.length;
@@ -193,7 +211,7 @@ public class DownsampleHelper
                                            stackResolutionUnit,
                                            numberOfDownsampledDatasets,
                                            downsampleFactors,
-                                           translatePixels,
+                                           resolvedTranslatePixels,
                                            NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
 
         ngAttributes.write(n5Supplier.get(), Paths.get(sZeroDatasetPath));
@@ -239,13 +257,11 @@ public class DownsampleHelper
                 description = "Unit description for stack resolution values, e.g. nm, um, ...")
         public String stackResolutionUnit = "nm";
 
-        // Required because NeuroglancerAttributes copies these values with new ArrayList<>(translate)
-        // and would fail with a confusing NullPointerException if they were omitted.  For datasets
-        // exported by N5Client, use the full scale stack bounds minimum (see N5Client.run).
         @Parameter(
                 names = "--translate",
-                description = "Translation pixels for the full scale x, y, and z axis, e.g. 100,-77,1",
-                required = true)
+                description = "Translation pixels for the full scale x, y, and z axis, e.g. 100,-77,1.  " +
+                              "Omit for datasets written by N5Client, whose renderExport attribute " +
+                              "records the stack bounds these values come from.")
         public String translate;
 
         public int[] getDownsampleFactors() {
@@ -265,6 +281,63 @@ public class DownsampleHelper
             final int[] translatePixels = Util.parseCSIntArray(translate);
             return translatePixels == null ? null :
                    Arrays.stream(translatePixels).asLongStream().boxed().collect(Collectors.toList());
+        }
+    }
+
+    /**
+     * @return the full scale translation pixels recorded by the render export for the specified
+     *         data set, or null if the data set has no usable renderExport stack bounds.
+     */
+    private static List<Long> readExportedTranslatePixels(final N5Reader n5,
+                                                          final String sZeroDatasetPath) {
+
+        // N5Client.updateFullScaleExportAttributes writes renderExport on the parent group
+        final java.nio.file.Path datasetPath = Paths.get(sZeroDatasetPath);
+        final String group = "s0".equals(datasetPath.getFileName().toString()) ?
+                             datasetPath.getParent().toString() : sZeroDatasetPath;
+
+        final RenderExport export = n5.getAttribute(group, "renderExport", RenderExport.class);
+
+        if ((export == null) || (export.stackMetadata == null) || (export.stackMetadata.stats == null)) {
+            return null;
+        }
+
+        final RenderExport.StackBounds bounds = export.stackMetadata.stats.stackBounds;
+
+        if ((bounds == null) || (bounds.minX == null) || (bounds.minY == null) || (bounds.minZ == null)) {
+            return null;
+        }
+
+        // longValue truncates toward zero, matching the conversion N5Client.run does
+        final List<Long> translatePixels = Arrays.asList(bounds.minX.longValue(),
+                                                         bounds.minY.longValue(),
+                                                         bounds.minZ.longValue());
+
+        LOG.info("readExportedTranslatePixels: derived {} from the renderExport attribute of {}",
+                 translatePixels, group);
+
+        return translatePixels;
+    }
+
+    /**
+     * Minimal GSON view of a group's renderExport attribute (only the stack bounds needed here,
+     * all of the other fields written by the export are ignored).
+     */
+    private static class RenderExport {
+        StackMetadata stackMetadata;
+
+        private static class StackMetadata {
+            Stats stats;
+        }
+
+        private static class Stats {
+            StackBounds stackBounds;
+        }
+
+        private static class StackBounds {
+            Double minX;
+            Double minY;
+            Double minZ;
         }
     }
 
