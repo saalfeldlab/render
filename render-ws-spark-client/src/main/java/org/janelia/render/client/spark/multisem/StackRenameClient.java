@@ -5,8 +5,8 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -134,15 +134,23 @@ public class StackRenameClient
                                                "already exist: " + String.join(", ", existingTargetConflicts));
         }
 
-        final Map<String, Set<String>> projectToTargetNames = new HashMap<>();
-        for (final StackId targetStackId : targetStackIds) {
-            final Set<String> targetNamesForProject =
-                    projectToTargetNames.computeIfAbsent(targetStackId.getProject(), p -> new HashSet<>());
-            if (! targetNamesForProject.add(targetStackId.getStack())) {
-                throw new IllegalArgumentException("cannot rename more than one stack to " +
-                                                   targetStackId.getStack() + " in project " +
-                                                   targetStackId.getProject() + " for owner " + owner);
+        // linked so that conflicts are reported in the order the stacks were listed
+        final Map<StackId, List<String>> targetToSourceNames = new LinkedHashMap<>();
+        for (int i = 0; i < targetStackIds.size(); i++) {
+            targetToSourceNames.computeIfAbsent(targetStackIds.get(i), t -> new ArrayList<>())
+                    .add(sourceStackIds.get(i).getStack());
+        }
+        final List<String> duplicateTargetConflicts = new ArrayList<>();
+        for (final Map.Entry<StackId, List<String>> entry : targetToSourceNames.entrySet()) {
+            if (entry.getValue().size() > 1) {
+                final StackId targetStackId = entry.getKey();
+                duplicateTargetConflicts.add(String.join(" and ", entry.getValue()) + " to " +
+                                             targetStackId.getStack() + " in project " + targetStackId.getProject());
             }
+        }
+        if (! duplicateTargetConflicts.isEmpty()) {
+            throw new IllegalArgumentException("cannot rename more than one stack to the same target name for owner " +
+                                               owner + ": " + String.join(", ", duplicateTargetConflicts));
         }
 
         if (targetStackIds.isEmpty()) {
