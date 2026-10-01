@@ -120,15 +120,22 @@ public class StackRenameClient
         // Check all renames before doing any of them so that partial renames are less likely.
         // Stack names only need to be distinct within a project, so these checks are per project.
         final Set<StackId> existingStackIdSet = new HashSet<>(existingStackIds);
-        final Map<String, Set<String>> projectToTargetNames = new HashMap<>();
+        final List<String> existingTargetConflicts = new ArrayList<>();
         for (int i = 0; i < targetStackIds.size(); i++) {
             final StackId targetStackId = targetStackIds.get(i);
             if (existingStackIdSet.contains(targetStackId)) {
-                throw new IllegalArgumentException("cannot rename " + sourceStackIds.get(i).getStack() + " to " +
-                                                   targetStackId.getStack() + " because a stack with that name " +
-                                                   "already exists in project " + targetStackId.getProject() +
-                                                   " for owner " + owner);
+                existingTargetConflicts.add(sourceStackIds.get(i).getStack() + " to " + targetStackId.getStack() +
+                                            " in project " + targetStackId.getProject());
             }
+        }
+        if (! existingTargetConflicts.isEmpty()) {
+            throw new IllegalArgumentException("cannot rename " + existingTargetConflicts.size() + " stack(s) " +
+                                               "for owner " + owner + " because stacks with the target names " +
+                                               "already exist: " + String.join(", ", existingTargetConflicts));
+        }
+
+        final Map<String, Set<String>> projectToTargetNames = new HashMap<>();
+        for (final StackId targetStackId : targetStackIds) {
             final Set<String> targetNamesForProject =
                     projectToTargetNames.computeIfAbsent(targetStackId.getProject(), p -> new HashSet<>());
             if (! targetNamesForProject.add(targetStackId.getStack())) {
