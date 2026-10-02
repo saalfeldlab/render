@@ -5,8 +5,10 @@
 #
 # Example DUMP_PATTERNS are: 'par.*s70', 'match.*s115', 'align.*s90', 'ic2d.*s080'
 #
-# The --exclude-pattern option skips any collections whose dump file path matches EXCLUDE_PATTERN.
-# Example EXCLUDE_PATTERNs are: 'match', '__tile$', 'w60.*transform'
+# The --exclude-pattern option skips any collections whose name (the dump file name without
+# .bson.gz) matches EXCLUDE_PATTERN.  Only the name is checked because the dump directories have
+# slab ranges in them (e.g. s070_to_s079_r0n) that would match patterns meant for single slabs.
+# Example EXCLUDE_PATTERNs are: 'match', '__tile$', 'w60.*transform', '_s07[5-9]_'
 #
 # Excluded render stacks are also removed from the admin__stack_meta_data collection after the
 # restore, since that one collection holds the metadata for every stack in the dump.
@@ -188,7 +190,8 @@ for DUMP_DIR in "${SELECTED[@]}"; do
   for DUMP_FILE in "${DUMP_DIR}"/*.bson.gz; do
 
     # skip collections excluded with --exclude-pattern
-    if [[ -n "$EXCLUDE_PATTERN" ]] && echo "$DUMP_FILE" | grep -q "$EXCLUDE_PATTERN"; then
+    COLLECTION_NAME=$(basename "${DUMP_FILE}" .bson.gz)
+    if [[ -n "$EXCLUDE_PATTERN" ]] && echo "$COLLECTION_NAME" | grep -q "$EXCLUDE_PATTERN"; then
       echo "skipping ${DUMP_FILE} since it matches exclude pattern '${EXCLUDE_PATTERN}'"
       continue
     fi
