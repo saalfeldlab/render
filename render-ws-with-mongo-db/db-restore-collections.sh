@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ----------------------------------------------------------------------------
-# Usage: db-restore-collection.sh [--pattern DUMP_PATTERN] [--exclude-pattern EXCLUDE_PATTERN]
+# Usage: db-restore-collection.sh [--pattern DUMP_PATTERN] [--exclude-pattern EXCLUDE_PATTERN] [--prompt-for-match-load]
 #
 # Example DUMP_PATTERNS are: 'par.*s70', 'match.*s115', 'align.*s90', 'ic2d.*s080'
 #
@@ -12,6 +12,9 @@
 #
 # Excluded render stacks are also removed from the admin__stack_meta_data collection after the
 # restore, since that one collection holds the metadata for every stack in the dump.
+#
+# Match collections are loaded without asking unless --prompt-for-match-load is specified, in which
+# case you are asked about each one (they are typically large and take ~3 minutes to load).
 #
 # Restore dump files to the mongodb database running on the current Google Cloud VM container.
 #
@@ -28,6 +31,7 @@ BASE_DUMP_DIR="/mnt/disks/mongodb_dump_fs/dump"
 DUMP_PATTERN=""
 EXCLUDE_PATTERN=""
 PATTERN_IS_ARG=false
+PROMPT_FOR_MATCH_LOAD=false
 
 echo
 echo "Base dump directory is: ${BASE_DUMP_DIR}"
@@ -48,9 +52,13 @@ while [[ $# -gt 0 ]]; do
             fi
             shift 2
             ;;
+        --prompt-for-match-load)
+            PROMPT_FOR_MATCH_LOAD=true
+            shift
+            ;;
         *)
             echo "Unknown argument: $1"
-            echo "Usage: $0 [--pattern DUMP_PATTERN] [--exclude-pattern EXCLUDE_PATTERN]"
+            echo "Usage: $0 [--pattern DUMP_PATTERN] [--exclude-pattern EXCLUDE_PATTERN] [--prompt-for-match-load]"
             exit 1
             ;;
     esac
@@ -60,6 +68,13 @@ if [[ -n "$EXCLUDE_PATTERN" ]]; then
     echo "Collections matching '${EXCLUDE_PATTERN}' will be excluded"
     echo
 fi
+
+if ${PROMPT_FOR_MATCH_LOAD}; then
+    echo "You will be asked whether to load each match collection"
+else
+    echo "All match collections will be loaded (specify --prompt-for-match-load to be asked about each one)"
+fi
+echo
 
 # List unique child directory names one level below $1.
 list_level() {
@@ -78,7 +93,11 @@ pick_many() {
     done
     printf "\nEnter numbers separated by spaces or commas, or 'all'.\n"
     while true; do
-        read -rp "Selection: " RAW
+        # read fails when input ends (e.g. ctrl-d), which would otherwise repeat the prompt forever
+        if ! read -rp "Selection: " RAW; then
+            printf "\n\nExiting, input ended before a selection was made\n\n"
+            exit 1
+        fi
         RAW="${RAW//,/ }"
         if [[ "$RAW" == "all" ]]; then
             SELECTED=("${ITEMS[@]}"); return 0
@@ -196,11 +215,14 @@ for DUMP_DIR in "${SELECTED[@]}"; do
       continue
     fi
 
-    # check for match db dumps and prompt for load since they are typically large and take ~3 minutes to load
-    if [[ "$DUMP_FILE" == *match.bson.gz ]]; then
+    # when requested, prompt for match db dumps since they are typically large and take ~3 minutes to load
+    if ${PROMPT_FOR_MATCH_LOAD} && [[ "$DUMP_FILE" == *match.bson.gz ]]; then
       while true; do
         DUMP_BASENAME=$(basename "${DUMP_FILE}")
-        read -rp "Do you want to load ${DUMP_BASENAME}? [y/n]: " CONFIRM
+        if ! read -rp "Do you want to load ${DUMP_BASENAME}? [y/n]: " CONFIRM; then
+          printf "\n\nExiting, input ended before %s was answered\n\n" "${DUMP_BASENAME}"
+          exit 1
+        fi
         case "$CONFIRM" in
           y) break ;;
           n) continue 2 ;;
