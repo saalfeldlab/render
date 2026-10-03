@@ -59,7 +59,22 @@ import org.slf4j.LoggerFactory;
 import jakarta.annotation.Nonnull;
 
 /**
- * Spark client for ...
+ * Spark client that aligns 2D aligned sfov stacks in 3D by treating each z layer as a single tile.
+ *
+ * <p>For each 2D aligned sfov stack, the client:</p>
+ * <ol>
+ *   <li>builds a dynamic layer-as-tile stack with one tile per z that renders the whole layer at the
+ *       layer render scale,</li>
+ *   <li>renders those layer tiles to images and builds a rendered layer-as-tile stack from them,</li>
+ *   <li>generates point matches between the rendered layer tiles, patching any stack whose layers
+ *       do not end up in a single connected match cluster,</li>
+ *   <li>aligns the rendered layer-as-tile stack with the distributed affine block solver, and</li>
+ *   <li>builds a 3D aligned sfov stack by applying each layer's alignment to all of that layer's
+ *       sfov tiles.</li>
+ * </ol>
+ *
+ * <p>Each step skips stacks (and match collections) that already exist, so a failed run can be
+ * restarted without redoing completed work.</p>
  */
 public class LayerAsTileClient
         implements Serializable, AlignmentPipelineStep {
