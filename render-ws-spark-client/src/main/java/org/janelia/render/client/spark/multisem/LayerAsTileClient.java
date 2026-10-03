@@ -70,7 +70,7 @@ import jakarta.annotation.Nonnull;
  *       do not end up in a single connected match cluster,</li>
  *   <li>aligns the rendered layer-as-tile stack with the distributed affine block solver, and</li>
  *   <li>builds a 3D aligned sfov stack by applying each layer's alignment to all of that layer's
- *       sfov tiles.</li>
+ *       sfov tiles, moved so that the stack's minimum x and y are 0.</li>
  * </ol>
  *
  * <p>Each step skips stacks (and match collections) that already exist, so a failed run can be
@@ -691,13 +691,44 @@ public class LayerAsTileClient
                 final StackMetaData rawSfovStackMetaData = workerDataClient.getStackMetaData(rawSfovStackId.getStack());
                 workerDataClient.setupDerivedStack(rawSfovStackMetaData, align3DSfovStack);
 
+                // The stack's bounds are only known once every layer's tiles have been transformed, so the
+                // first pass just finds the minimum x and y and the second pass rebuilds and saves each layer
+                // moved by that much so that the stack starts at the origin.  Only the minimums are kept
+                // between passes so that memory use does not grow with the number of layers.
+                double stackMinX = Double.MAX_VALUE;
+                double stackMinY = Double.MAX_VALUE;
                 for (final Double z : stackWithAllZ.getzValues()) {
                     final ResolvedTileSpecCollection align3DTiles = buildAlign3DTileSpecsForZ(workerDataClient,
                                                                                               rawSfovStackId.getStack(),
                                                                                               z,
                                                                                               renderedLayerStackId.getStack(),
                                                                                               alignedLayerStackId.getStack(),
-                                                                                              layerAsTile.getLayerRenderScale());
+                                                                                              layerAsTile.getLayerRenderScale(),
+                                                                                              0.0,
+                                                                                              0.0);
+                    final Bounds layerBounds = align3DTiles.toBounds();
+                    if (layerBounds != null) {
+                        stackMinX = Math.min(stackMinX, layerBounds.getMinX());
+                        stackMinY = Math.min(stackMinY, layerBounds.getMinY());
+                    }
+                }
+
+                // leave a stack without any tiles where it is
+                final double translateX = stackMinX == Double.MAX_VALUE ? 0.0 : -stackMinX;
+                final double translateY = stackMinY == Double.MAX_VALUE ? 0.0 : -stackMinY;
+
+                LOG.info("buildAlign3DStackFunction: moving {} by ({}, {}) so that it starts at the origin",
+                         align3DSfovStackId.toDevString(), translateX, translateY);
+
+                for (final Double z : stackWithAllZ.getzValues()) {
+                    final ResolvedTileSpecCollection align3DTiles = buildAlign3DTileSpecsForZ(workerDataClient,
+                                                                                              rawSfovStackId.getStack(),
+                                                                                              z,
+                                                                                              renderedLayerStackId.getStack(),
+                                                                                              alignedLayerStackId.getStack(),
+                                                                                              layerAsTile.getLayerRenderScale(),
+                                                                                              translateX,
+                                                                                              translateY);
                     workerDataClient.saveResolvedTiles(align3DTiles, align3DSfovStack, z);
                 }
 
@@ -730,7 +761,9 @@ public class LayerAsTileClient
                                                                         final double z,
                                                                         final String renderedLayerStack,
                                                                         final String alignedLayerStack,
-                                                                        final double layerAsTileRenderScale)
+                                                                        final double layerAsTileRenderScale,
+                                                                        final double translateX,
+                                                                        final double translateY)
             throws IOException {
 
         final String stackZContext = rawSfovStack + " z " + z;
@@ -805,6 +838,12 @@ public class LayerAsTileClient
         sfovModel.concatenate(layerToRenderedLocal); // alignedLayerModel * renderedLayerModel^-1
         sfovModel.concatenate(scaleSFOVToLayer);     // alignedLayerModel * renderedLayerModel^-1 * scaleSFOVToLayer
         sfovModel.preConcatenate(scaleLayerToSFOV);  // scaleLayerToSFOV * alignedLayerModel * renderedLayerModel^-1 * scaleSFOVToLayer
+
+        // The translation is applied last, so it shifts the world bounds of every tile by exactly
+        // (translateX, translateY), which lets the caller move the whole stack to the origin.
+        final AffineModel2D translateSFOV = new AffineModel2D();
+        translateSFOV.set(1, 0, 0, 1, translateX, translateY);
+        sfovModel.preConcatenate(translateSFOV);     // translateSFOV * scaleLayerToSFOV * ...
 
         final String sfovModelDataString = sfovModel.toDataString();
 
