@@ -1,7 +1,6 @@
 package org.janelia.alignment.transform;
 
 import java.nio.file.Path;
-import java.util.Arrays;
 
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.n5.precomputed.PrecomputedTestVolumes;
@@ -153,14 +152,40 @@ public class DisplacementFieldTransformTest {
         Assert.assertEquals("x residual", 0.0, 24.0 + vector[0] - target[0], 0.001);
         Assert.assertEquals("y residual", 0.0, 12.0 + vector[1] - target[1], 0.001);
 
-        // the same field at vectorScale 2 is not invertible (Jacobian norm 2), so the iteration hits its cap:
-        // that must warn and return the last estimate rather than throw or hand back a non-number
+        // at vectorScale 2 the field is too steep for fixed-point iteration (Lipschitz constant 2), but the exact
+        // inversion still solves it; only the residual is checked, since the mirrored extension folds the field at its border and
+        // adds roots outside it (here x=-26 besides x=8)
         final DisplacementFieldTransform steep = new DisplacementFieldTransform();
         steep.init(fieldDir + "?z=0&vectorScale=2.0");
-        final double[] estimate = steep.apply(new double[] {24.0, 12.0});
-        Assert.assertTrue("a non-converging inversion should still return numbers, but was " +
-                          Arrays.toString(estimate),
-                          Double.isFinite(estimate[0]) && Double.isFinite(estimate[1]));
+        final double[] steepTarget = steep.apply(new double[] {24.0, 12.0});
+        steep.lookUpVector(steepTarget, vector);
+        Assert.assertEquals("steep x residual", 0.0, 24.0 + vector[0] - steepTarget[0], 0.001);
+        Assert.assertEquals("steep y residual", 0.0, 12.0 + vector[1] - steepTarget[1], 0.001);
+    }
+
+    /**
+     * A folded field: t - d(t) in x rises to 19 at x=19, falls to 11 at x=21, then rises as x-10. For source 19.5
+     * the only root is x=29.5 on the far sheet, nine cells from the first-order estimate 20.5 (where a local solver
+     * started there stalls at the crease x=19), so this checks that the inversion searches far enough to find it.
+     */
+    @Test
+    public void testInvertsFoldedField() throws Exception {
+
+        final Path fieldDir = tempFolder.newFolder("foldField").toPath();
+        PrecomputedTestVolumes.writeRawVolume(fieldDir,
+                                              DataType.FLOAT32,
+                                              2,
+                                              new long[] {64, 32, 1},
+                                              new int[] {64, 32, 1},
+                                              new long[] {0, 0, 0},
+                                              (x, y, z, c) -> (c == 1) ? 0 : (x <= 19) ? 0 : (x == 20) ? -2 : -10);
+
+        final DisplacementFieldTransform transform = new DisplacementFieldTransform();
+        transform.init(fieldDir + "?z=0");
+
+        final double[] target = transform.apply(new double[] {19.5, 10.0});
+        Assert.assertEquals("x should be the far-sheet root", 29.5, target[0], 0.001);
+        Assert.assertEquals("y is not displaced", 10.0, target[1], 0.001);
     }
 
     @Test

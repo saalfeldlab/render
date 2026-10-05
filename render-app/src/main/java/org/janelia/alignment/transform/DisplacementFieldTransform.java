@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Moves each queried location by a displacement vector interpolated from a field on disk. The field is a pull
  * map (see {@link #extractAndTransform}), so applying it means inverting the field, done in {@link #applyInPlace}
- * by a Newton iteration.
+ * by solving the bilinearly interpolated field exactly, cell by cell.
  */
 public class DisplacementFieldTransform
         implements CoordinateTransform {
@@ -209,60 +209,89 @@ public class DisplacementFieldTransform
                     "displacement field has not been loaded; call init(String) before applying this transform");
         }
 
-        // The (negated) field vector belongs to the target location, not to the queried source
-        // location, so the target solves f(t) = t - d(t) - source = 0 via Newton's method.
-        final double[] currentPos = { location[0], location[1] };
-        final double[] shiftedPos = new double[2];
-        final double[] vector = new double[2];
-        final double[] shiftedVector = new double[2];
-        final double h = this.scale * JACOBIAN_STEP_IN_FIELD_PIXELS;
-        double step = Double.POSITIVE_INFINITY;
-
-        for (int i = 0; (i < MAX_INVERSION_ITERATIONS) && (step > INVERSION_TOLERANCE); i++) {
-            lookUpVector(currentPos, vector);
-            final double fx = currentPos[0] - vector[0] - location[0];
-            final double fy = currentPos[1] - vector[1] - location[1];
-
-            // Jacobian of f by forward differences: J = I - dd/dt
-            shiftedPos[0] = currentPos[0] + h;
-            shiftedPos[1] = currentPos[1];
-            lookUpVector(shiftedPos, shiftedVector);
-            double j00 = 1.0 - (shiftedVector[0] - vector[0]) / h;
-            double j10 =     - (shiftedVector[1] - vector[1]) / h;
-
-            shiftedPos[0] = currentPos[0];
-            shiftedPos[1] = currentPos[1] + h;
-            lookUpVector(shiftedPos, shiftedVector);
-            double j01 =     - (shiftedVector[0] - vector[0]) / h;
-            double j11 = 1.0 - (shiftedVector[1] - vector[1]) / h;
-
-            double det = j00 * j11 - j01 * j10;
-            if (Math.abs(det) < MIN_JACOBIAN_DETERMINANT) {
-                // Folded (non-invertible) field: fall back to a plain fixed-point step rather than blowing up.
-                j00 = 1.0; j01 = 0.0;
-                j10 = 0.0; j11 = 1.0;
-                det = 1.0;
+        // The (negated) field vector belongs to the target location, not to the queried source location, so the
+        // target solves t - d(t) = source. With bilinear interpolation, t - d(t) is bilinear within each field cell,
+        // so each cell can be solved exactly; search the cells in growing square rings around the cell of the first
+        // fixed-point iterate source + d(source), which usually holds the root. A root always exists, as t - d(t) is
+        // the identity plus a bounded field; where the field folds there are several and the nearest ring's wins.
+        final double[] start = new double[2];
+        lookUpVector(location, start);
+        final long startCellX = (long) Math.floor((location[0] + start[0] - offset[0]) / scale);
+        final long startCellY = (long) Math.floor((location[1] + start[1] - offset[1]) / scale);
+        for (int r = 0; r <= MAX_SEARCH_RING; r++) {
+            for (int i = -r; i <= r; i++) {
+                // on the ring's top and bottom rows take every cell, in between only its two ends
+                final int jStep = ((Math.abs(i) == r) || (r == 0)) ? 1 : 2 * r;
+                for (int j = -r; j <= r; j += jStep) {
+                    if (solveInCell(startCellX + i, startCellY + j, location)) {
+                        return;
+                    }
+                }
             }
-
-            final double dx = (j11 * fx - j01 * fy) / det;
-            final double dy = (j00 * fy - j10 * fx) / det;
-            step = Math.max(Math.abs(dx), Math.abs(dy));
-            currentPos[0] -= dx;
-            currentPos[1] -= dy;
         }
 
-        // A non-invertible field may still exceed the tolerance after the cap; use the last estimate rather than
-        // failing the render, logged once per instance to avoid a line per pixel.
-        if ((step > INVERSION_TOLERANCE) && (! divergenceLogged)) {
+        // Keep the fixed-point estimate rather than failing the render, logged once per instance to avoid a line
+        // per pixel.
+        if (! divergenceLogged) {
             divergenceLogged = true;
-            LOG.warn("applyInPlace: inversion did not converge within {} iterations at ({}, {}) for field {}; " +
-                     "residual step is {} px and the last estimate is used. Further occurrences for this " +
-                     "transform instance are not logged.",
-                     MAX_INVERSION_ITERATIONS, location[0], location[1], toDataString(), step);
+            LOG.warn("applyInPlace: no inverse found within {} field pixels of ({}, {}) for field {}; the " +
+                     "first-order estimate is used. Further occurrences for this transform instance are not logged.",
+                     MAX_SEARCH_RING, location[0], location[1], toDataString());
+        }
+        location[0] += start[0];
+        location[1] += start[1];
+    }
+
+    /**
+     * Solves t - d(t) = location within field cell (cellX, cellY), where t - d(t) is the bilinear map
+     * a + b u + c v + e u v of the cell coordinates (u, v) in [0, 1]^2. Eliminating u leaves a quadratic in v.
+     *
+     * @return whether the cell holds a solution, which then replaces location.
+     */
+    private boolean solveInCell(final long cellX, final long cellY, final double[] location) {
+        // t - d(t) at the corners (0,0), (1,0), (0,1), (1,1), as x and y
+        final double x0 = offset[0] + cellX * scale;
+        final double y0 = offset[1] + cellY * scale;
+        final double[] corners = new double[8];
+        final double[] node = new double[2];
+        final double[] vector = new double[2];
+        for (int k = 0; k < 4; k++) {
+            node[0] = x0 + (k & 1) * scale;
+            node[1] = y0 + (k >> 1) * scale;
+            lookUpVector(node, vector);
+            corners[2 * k] = node[0] - vector[0];
+            corners[2 * k + 1] = node[1] - vector[1];
+        }
+        final double hx = location[0] - corners[0], hy = location[1] - corners[1];
+        final double bx = corners[2] - corners[0], by = corners[3] - corners[1];
+        final double cx = corners[4] - corners[0], cy = corners[5] - corners[1];
+        final double ex = corners[6] - corners[4] - corners[2] + corners[0];
+        final double ey = corners[7] - corners[5] - corners[3] + corners[1];
+
+        // b u + c v + e u v = h; crossing with (b + e v) eliminates u: k2 v^2 + k1 v + k0 = 0
+        final double k2 = ex * cy - ey * cx;
+        final double k1 = bx * cy - by * cx + hx * ey - hy * ex;
+        final double k0 = hx * by - hy * bx;
+        final double discriminant = k1 * k1 - 4 * k2 * k0;
+        if (discriminant < 0) {
+            return false;
         }
 
-        location[0] = currentPos[0];
-        location[1] = currentPos[1];
+        // the cancellation-free pair of roots, which also covers the linear case k2 = 0 (the first is then infinite)
+        final double q = -0.5 * (k1 + Math.copySign(Math.sqrt(discriminant), k1));
+        for (final double v : new double[] { q / k2, k0 / q }) {
+            if ((v < -CELL_EPSILON) || (v > 1 + CELL_EPSILON)) {
+                continue; // also skips NaN
+            }
+            final double ux = bx + ex * v, uy = by + ey * v;
+            final double u = (Math.abs(ux) > Math.abs(uy)) ? (hx - cx * v) / ux : (hy - cy * v) / uy;
+            if ((u >= -CELL_EPSILON) && (u <= 1 + CELL_EPSILON)) {
+                location[0] = x0 + u * scale;
+                location[1] = y0 + v * scale;
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -351,13 +380,11 @@ public class DisplacementFieldTransform
     private static final double DEFAULT_OFFSET = 0.0;
     private static final double DEFAULT_VECTOR_SCALE = 1.0;
 
-    /** Full-resolution pixels of movement below which the inversion in {@link #applyInPlace} is considered done. */
-    private static final double INVERSION_TOLERANCE = 1e-4;
-    private static final int MAX_INVERSION_ITERATIONS = 20;
-    /** Finite-difference step for the Jacobian in {@link #applyInPlace}, as a fraction of a field pixel. */
-    private static final double JACOBIAN_STEP_IN_FIELD_PIXELS = 0.25;
-    /** Below this |det J| the field is treated as folded and the Newton step degrades to a fixed-point step. */
-    private static final double MIN_JACOBIAN_DETERMINANT = 1e-6;
+    /** Rings of field cells that {@link #applyInPlace} searches for the inverse; must cover the distance from the
+     *  first-order estimate to the root, which is at most twice the largest displacement, in field pixels. */
+    private static final int MAX_SEARCH_RING = 32;
+    /** Slack on the cell bounds in {@link #solveInCell}, so a root on a shared edge isn't lost to rounding. */
+    private static final double CELL_EPSILON = 1e-9;
 
     private static final Set<String> VALID_PARAMETERS = Set.of("z", "scale", "offset", "vectorScale");
 }
