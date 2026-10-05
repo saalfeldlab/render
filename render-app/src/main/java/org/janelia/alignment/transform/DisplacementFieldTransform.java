@@ -382,7 +382,7 @@ public class DisplacementFieldTransform
 
     /** Rings of field cells that {@link #applyInPlace} searches for the inverse; must cover the distance from the
      *  first-order estimate to the root, which is at most twice the largest displacement, in field pixels. */
-    private static final int MAX_SEARCH_RING = 32;
+    private static final int MAX_SEARCH_RING = 48;
     /** Slack on the cell bounds in {@link #solveInCell}, so a root on a shared edge isn't lost to rounding. */
     private static final double CELL_EPSILON = 1e-9;
 
