@@ -59,7 +59,28 @@ import org.slf4j.LoggerFactory;
 import jakarta.annotation.Nonnull;
 
 /**
- * Spark client for ...
+ * Spark client that roughly aligns raw sfov stacks by treating each mfov as a single tile.
+ *
+ * <p>For each raw sfov stack, the client:</p>
+ * <ol>
+ *   <li>optionally (when prealign is requested) builds a prealigned sfov stack that aligns and
+ *       intensity corrects the sfov tiles within each mfov,</li>
+ *   <li>builds a dynamic mfov-as-tile stack with one tile per mfov that renders the whole mfov,</li>
+ *   <li>renders those mfov tiles to images and builds a rendered mfov-as-tile stack from them,</li>
+ *   <li>generates point matches between the rendered mfov tiles,</li>
+ *   <li>when a minimum cross match pixel distance is specified, removes cross layer match pairs
+ *       whose points are offset by less than that distance on average (presumably matches in the
+ *       resin around the tissue rather than in the tissue itself),</li>
+ *   <li>patches same layer mfov pairs that are left unconnected by matching,</li>
+ *   <li>aligns the rendered mfov-as-tile stack with a translation only distributed affine block
+ *       solve, and</li>
+ *   <li>builds a rough sfov stack by applying each mfov's alignment to all of that mfov's
+ *       sfov tiles.</li>
+ * </ol>
+ *
+ * <p>The build, match, and alignment steps skip stacks (and match collections) that already exist,
+ * so a failed run can be restarted without redoing completed work.  Cross resin match removal and
+ * patching are rerun every time since they only change pairs that still need it.</p>
  */
 public class MFOVAsTileClient
         implements Serializable, AlignmentPipelineStep {
