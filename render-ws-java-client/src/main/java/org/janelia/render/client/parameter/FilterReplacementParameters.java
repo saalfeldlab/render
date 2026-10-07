@@ -49,7 +49,7 @@ public class FilterReplacementParameters
     }
 
     /** @return true if the specified stack name matches the tileStackPattern. */
-    public boolean isTileStack(final String stack) {
+    public boolean isValidStack(final String stack) {
         return buildTileStackPattern().matcher(stack).matches();
     }
 

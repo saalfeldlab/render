@@ -118,7 +118,7 @@ public class FilterReplacementClient
 
         final RenderDataClient ownerDataClient = new RenderDataClient(baseDataUrl, owner, "not_used");
         final List<StackId> tileStackIds = ownerDataClient.getOwnerStacks().stream()
-                .filter(stackId -> filterReplacement.isTileStack(stackId.getStack()))
+                .filter(stackId -> filterReplacement.isValidStack(stackId.getStack()))
                 .collect(Collectors.toList());
 
         // fail fast for parameters that match no stacks
