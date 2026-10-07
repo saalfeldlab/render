@@ -18,6 +18,7 @@ import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
 import org.janelia.render.client.parameter.BeamCorrectionParameters;
 import org.janelia.render.client.parameter.CreepCorrectionParameters;
+import org.janelia.render.client.parameter.FilterReplacementParameters;
 import org.janelia.render.client.parameter.LayerAsTileParameters;
 import org.janelia.render.client.parameter.MFOVAsTileParameters;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
@@ -69,10 +70,12 @@ public class AlignmentPipelineParameters
     private final TileRemovalSetup tileRemoval;
     private final SofimaParameters sofima;
     private final StackRenameParameters stackRename;
+    private final FilterReplacementParameters filterReplacement;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -119,7 +122,8 @@ public class AlignmentPipelineParameters
                                        final LayerAsTileParameters layerAsTile,
                                        final TileRemovalSetup tileRemoval,
                                        final SofimaParameters sofima,
-                                       final StackRenameParameters stackRename) {
+                                       final StackRenameParameters stackRename,
+                                       final FilterReplacementParameters filterReplacement) {
         this.multiProject = multiProject;
         this.pipelineStackGroups = pipelineStackGroups;
         this.pipelineSteps = pipelineSteps;
@@ -143,6 +147,7 @@ public class AlignmentPipelineParameters
         this.tileRemoval = tileRemoval;
         this.sofima = sofima;
         this.stackRename = stackRename;
+        this.filterReplacement = filterReplacement;
     }
 
     public MultiProjectParameters getMultiProject(final StackIdNamingGroup withNamingGroup) {
@@ -253,6 +258,10 @@ public class AlignmentPipelineParameters
 
     public StackRenameParameters getStackRename() {
         return stackRename;
+    }
+
+    public FilterReplacementParameters getFilterReplacement() {
+        return filterReplacement;
     }
 
     /**
