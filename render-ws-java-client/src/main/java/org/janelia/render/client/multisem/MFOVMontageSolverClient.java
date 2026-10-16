@@ -97,7 +97,7 @@ public class MFOVMontageSolverClient {
 
             final ArrayList<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks =
                     new ArrayList<>(
-                            UnconnectedMFOVPairsForStack.load(parameters.unconnectedMFOVPairsFiles.get(0))
+                            UnconnectedMFOVPairsForStack.load(parameters.unconnectedMFOVPairsFiles.getFirst())
                     );
 
             // add more pairs if multiple files have been specified
@@ -146,7 +146,7 @@ public class MFOVMontageSolverClient {
 
         final Map<Double, Set<String>> zToMFOVSet = LayerMFOV.buildZToMFOVNamesMap(unconnectedMFOVs);
 
-        for (final double z : zToMFOVSet.keySet().stream().sorted().collect(Collectors.toList())) {
+        for (final double z : zToMFOVSet.keySet().stream().sorted().toList()) {
 
             LOG.info("solveUnconnectedStack: connecting tiles for z {}", z);
 
@@ -166,8 +166,7 @@ public class MFOVMontageSolverClient {
             final Map<String, Set<String>> mFOVToTileIdMap = new HashMap<>();
 
             final Map<String, Tile<InterpolatedAffineModel2D<AffineModel2D, TranslationModel2D>>> idToTileMap =
-                    buildTileDataForZ(z,
-                                      stack,
+                    buildTileDataForZ(stack,
                                       resolvedTiles,
                                       matchDataClient,
                                       mFOVSet,
@@ -194,7 +193,6 @@ public class MFOVMontageSolverClient {
     }
 
     private static Map<String, Tile<InterpolatedAffineModel2D<AffineModel2D, TranslationModel2D>>> buildTileDataForZ(
-            final double z,
             final String stack,
             final ResolvedTileSpecCollection resolvedTiles,
             final RenderDataClient matchDataClient,
@@ -204,9 +202,15 @@ public class MFOVMontageSolverClient {
         final Map<String, Tile<InterpolatedAffineModel2D<AffineModel2D, TranslationModel2D>>> idToTileMap =
                 new HashMap<>();
 
-        final String groupId = String.valueOf(z);
+        // match groups are section ids which can differ from z (e.g. after a stack is collapsed)
+        final Set<String> groupIds = resolvedTiles.getTileSpecs().stream()
+                .map(TileSpec::getSectionId)
+                .collect(Collectors.toSet());
 
-        final List<CanvasMatches> matches = matchDataClient.getMatchesWithinGroup(groupId, false);
+        final List<CanvasMatches> matches = new ArrayList<>();
+        for (final String groupId : groupIds) {
+            matches.addAll(matchDataClient.getMatchesWithinGroup(groupId, false));
+        }
         for (final CanvasMatches match : matches) {
 
             final String pId = match.getpId();

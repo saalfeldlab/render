@@ -142,8 +142,16 @@ public class MFOVAsTileMontageMatchPatchClient {
 
         final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
 
+        if (! resolvedTiles.hasTileSpecs()) {
+            throw new IOException("no tiles exist for z " + z + " in stack " + stack);
+        }
+
         final List<TileBounds> tileBoundsList =
                 resolvedTiles.getTileSpecs().stream().map(TileSpec::toTileBounds).collect(Collectors.toList());
+
+        // assumes tiles in one z-layer of a multi-SEM stack all share the same sectionId
+        final String groupId = tileBoundsList.getFirst().getSectionId();
+
         final TileBoundsRTree tree = new TileBoundsRTree(z, tileBoundsList);
 
         final Set<OrderedCanvasIdPair> potentialPairsForZ = tree.getCircleNeighbors(tileBoundsList,
@@ -175,7 +183,6 @@ public class MFOVAsTileMontageMatchPatchClient {
         // query web service to find connected tile pairs and remove them from unconnected set
         int numberOfConnectedPairsForMFOV = 0;
         if (! unconnectedPairs.isEmpty()) {
-            final String groupId = String.valueOf(z);
             for (final CanvasMatches canvasMatches : matchClient.getMatchesWithinGroup(groupId,
                                                                                        true)) {
                 final String pId = canvasMatches.getpId();

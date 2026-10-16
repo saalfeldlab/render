@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -182,7 +183,7 @@ public class CreepCorrectionSparkClient
                         matchCollectionId));
         final List<List<MfovResult>> resultList = rddResults.collect();
 
-        // collect all corrections on the driver
+        // collect all corrections on the driver (keyed by z for reporting)
         final Map<String, List<MfovResult>> allResults = new HashMap<>();
         for (int i = 0; i < correctedZValues.size(); i++) {
             allResults.put(String.valueOf(correctedZValues.get(i).doubleValue()), resultList.get(i));
@@ -216,6 +217,20 @@ public class CreepCorrectionSparkClient
         // Phase 2: transform matches
         if (creepCorrection.correctMatches()) {
 
+            // matches are grouped by section id which can differ from z (e.g. after a stack is collapsed),
+            // so map the results to section ids for match lookups
+            final Map<Double, Set<String>> zToSectionIdsMap =
+                    sourceDataClient.getStackZToSectionIdsMap(sourceStack, null, null, correctedZValues);
+            final Map<String, List<MfovResult>> sectionIdToResults = new HashMap<>();
+            for (int i = 0; i < correctedZValues.size(); i++) {
+                final Set<String> sectionIds = zToSectionIdsMap.get(correctedZValues.get(i));
+                if (sectionIds != null) {
+                    for (final String sectionId : sectionIds) {
+                        sectionIdToResults.put(sectionId, resultList.get(i));
+                    }
+                }
+            }
+
             final RenderDataClient driverMatchClient = new RenderDataClient(baseDataUrl,
                                                                             matchCollectionId.getOwner(),
                                                                             matchCollectionId.getName());
@@ -230,7 +245,7 @@ public class CreepCorrectionSparkClient
                                  baseDataUrl,
                                  matchCollectionId,
                                  matchCollectionId,
-                                 allResults);
+                                 sectionIdToResults);
 
             } else if (creepCorrection.overwriteMatchDataAndRenameAsTarget()) {
 
@@ -239,7 +254,7 @@ public class CreepCorrectionSparkClient
                                  baseDataUrl,
                                  matchCollectionId,
                                  matchCollectionId,
-                                 allResults);
+                                 sectionIdToResults);
 
                 driverMatchClient.renameMatchCollection(targetMatchCollectionId);
 
@@ -250,7 +265,7 @@ public class CreepCorrectionSparkClient
                                  baseDataUrl,
                                  matchCollectionId,
                                  targetMatchCollectionId,
-                                 allResults);
+                                 sectionIdToResults);
             }
 
         } else {
