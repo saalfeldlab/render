@@ -86,7 +86,8 @@ public class CreepCorrectionClient {
                                           final String targetStack)
             throws IOException {
 
-        LOG.info("processZLayer: entry, z={}", z);
+        final String stackAndZ = stack + "::z" + z;
+        LOG.info("processZLayer: entry, {}", stackAndZ);
 
         final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
 
@@ -98,14 +99,22 @@ public class CreepCorrectionClient {
         }
 
         // load all within-group matches and index by tile pair
-        final String groupId = String.valueOf(z);
-        final List<CanvasMatches> allMatches = matchDataClient.getMatchesWithinGroup(groupId, false);
+        // (match groups are section ids which can differ from z, e.g. after a stack is collapsed)
+        final Set<String> groupIds = resolvedTiles.getTileSpecs().stream()
+                .map(TileSpec::getSectionId)
+                .collect(Collectors.toSet());
+
+        LOG.info("processZLayer: {} has {} groupIds {}",
+                 stackAndZ, groupIds.size(), groupIds);
+
         final Map<String, CanvasMatches> pairKeyToMatches = new HashMap<>();
-        for (final CanvasMatches match : allMatches) {
-            final String pMFOV = MultiSemUtilities.getMagcMfovForTileId(match.getpId());
-            final String qMFOV = MultiSemUtilities.getMagcMfovForTileId(match.getqId());
-            if (pMFOV.equals(qMFOV)) {
-                pairKeyToMatches.put(pairKey(match.getpId(), match.getqId()), match);
+        for (final String groupId : groupIds) {
+            for (final CanvasMatches match : matchDataClient.getMatchesWithinGroup(groupId, false)) {
+                final String pMFOV = MultiSemUtilities.getMagcMfovForTileId(match.getpId());
+                final String qMFOV = MultiSemUtilities.getMagcMfovForTileId(match.getqId());
+                if (pMFOV.equals(qMFOV)) {
+                    pairKeyToMatches.put(pairKey(match.getpId(), match.getqId()), match);
+                }
             }
         }
 
@@ -117,24 +126,25 @@ public class CreepCorrectionClient {
             final String mfov = entry.getKey();
             final List<TileSpec> mfovTiles = entry.getValue();
 
-            LOG.info("processZLayer: processing mFOV {}", mfov);
+            LOG.info("processZLayer: {}, processing mFOV {}", stackAndZ, mfov);
             final MfovResult result = processMFOV(mfov, mfovTiles, pairKeyToMatches, resolvedTiles);
             mfovResults.add(result);
 
             if (result.isValid) {
                 correctedMFOVCount++;
-                LOG.info("processZLayer: successfully corrected mFOV {}", mfov);
+                LOG.info("processZLayer: {}, successfully corrected mFOV {}", stackAndZ, mfov);
             } else {
                 skippedMFOVCount++;
-                LOG.info("processZLayer: failed correcting mFOV {}: {}", mfov, result.diagnosticMessage);
+                LOG.info("processZLayer: {}, failed correcting mFOV {}: {}",
+                         stackAndZ, mfov, result.diagnosticMessage);
             }
         }
 
         // save all tiles (both corrected and uncorrected)
         renderDataClient.saveResolvedTiles(resolvedTiles, targetStack, z);
 
-        LOG.info("processZLayer: exit, z={}, correctedMFOVs={}, skippedMFOVs={}, totalTiles={}",
-                 z, correctedMFOVCount, skippedMFOVCount, resolvedTiles.getTileCount());
+        LOG.info("processZLayer: exit, stack={}, z={}, correctedMFOVs={}, skippedMFOVs={}, totalTiles={}",
+                 stack, z, correctedMFOVCount, skippedMFOVCount, resolvedTiles.getTileCount());
 
         return mfovResults;
     }
@@ -415,8 +425,10 @@ public class CreepCorrectionClient {
     }
 
     /**
-     * Transforms all matches for a given group (z-layer) using the collected creep corrections.
+     * Transforms all matches for a given group (section) using the collected creep corrections.
      * Handles both within-group and outside-group matches.
+     *
+     * @param  allResults  creep correction results keyed by group (section) id, not z.
      */
     public void transformMatchesForGroup(final String groupId,
                                          final Map<String, List<MfovResult>> allResults,

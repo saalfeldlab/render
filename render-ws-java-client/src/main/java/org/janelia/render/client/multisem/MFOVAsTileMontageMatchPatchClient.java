@@ -142,8 +142,25 @@ public class MFOVAsTileMontageMatchPatchClient {
 
         final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
 
+        if (! resolvedTiles.hasTileSpecs()) {
+            throw new IOException("no tiles exist for z " + z + " in stack " + stack);
+        }
+
         final List<TileBounds> tileBoundsList =
                 resolvedTiles.getTileSpecs().stream().map(TileSpec::toTileBounds).collect(Collectors.toList());
+
+        // match groups are section ids which can differ from z (e.g. after a stack is collapsed),
+        // so make sure all tiles in this z-layer share the same sectionId
+        final Set<String> sectionIds = tileBoundsList.stream()
+                .map(TileBounds::getSectionId)
+                .collect(Collectors.toSet());
+        if (sectionIds.size() > 1) {
+            throw new IllegalStateException("z " + z + " in stack " + stack + " has " + sectionIds.size() +
+                                            " different sectionIds " + sectionIds +
+                                            " but all tiles in a z-layer must share the same sectionId");
+        }
+        final String groupId = sectionIds.iterator().next();
+
         final TileBoundsRTree tree = new TileBoundsRTree(z, tileBoundsList);
 
         final Set<OrderedCanvasIdPair> potentialPairsForZ = tree.getCircleNeighbors(tileBoundsList,
@@ -175,7 +192,6 @@ public class MFOVAsTileMontageMatchPatchClient {
         // query web service to find connected tile pairs and remove them from unconnected set
         int numberOfConnectedPairsForMFOV = 0;
         if (! unconnectedPairs.isEmpty()) {
-            final String groupId = String.valueOf(z);
             for (final CanvasMatches canvasMatches : matchClient.getMatchesWithinGroup(groupId,
                                                                                        true)) {
                 final String pId = canvasMatches.getpId();

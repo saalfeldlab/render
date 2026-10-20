@@ -178,10 +178,23 @@ public class UnconnectedMontageMFOVClient {
         });
 
         final Double z = stackWithSingleZ.getFirstZ();
-        final String groupId = String.valueOf(z);
-        final Set<OrderedCanvasIdPair> existingSameLayerPairs =
-                matchClient.getMatchesWithinGroup(groupId, true).stream()
-                        .map(CanvasMatches::toOrderedPair).collect(Collectors.toSet());
+
+        // match groups are section ids which can differ from z (e.g. after a stack is collapsed)
+        final Set<String> groupIds = new HashSet<>();
+        potentialDifferentMfovPairs.forEach(pair -> {
+            groupIds.add(pair.getP().getGroupId());
+            groupIds.add(pair.getQ().getGroupId());
+        });
+
+        LOG.info("findIsolatedMFOVsInLayer: {} has {} groupIds {}",
+                 stackWithSingleZ, groupIds.size(), groupIds);
+
+        final Set<OrderedCanvasIdPair> existingSameLayerPairs = new HashSet<>();
+        for (final String groupId : groupIds) {
+            matchClient.getMatchesWithinGroup(groupId, true).stream()
+                    .map(CanvasMatches::toOrderedPair)
+                    .forEach(existingSameLayerPairs::add);
+        }
 
         final Map<String, Set<String>> tileIdToConnectedMfovsMap = new HashMap<>();
         final Set<String> internalEdgeConnectedTileIds = new HashSet<>();
@@ -406,7 +419,7 @@ public class UnconnectedMontageMFOVClient {
 
             final Map<Double, Set<String>> zToMFOVSet = isolatedMFOVsForStack.buildZToMFOVNamesMap();
 
-            for (final Double z : zToMFOVSet.keySet().stream().sorted().collect(Collectors.toList())) {
+            for (final Double z : zToMFOVSet.keySet().stream().sorted().toList()) {
                 final Set<String> isolatedLayerMFOVNames = zToMFOVSet.get(z);
 
                 final ResolvedTileSpecCollection resolvedTiles =
