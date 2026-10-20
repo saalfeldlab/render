@@ -149,8 +149,17 @@ public class MFOVAsTileMontageMatchPatchClient {
         final List<TileBounds> tileBoundsList =
                 resolvedTiles.getTileSpecs().stream().map(TileSpec::toTileBounds).collect(Collectors.toList());
 
-        // assumes tiles in one z-layer of a multi-SEM stack all share the same sectionId
-        final String groupId = tileBoundsList.getFirst().getSectionId();
+        // match groups are section ids which can differ from z (e.g. after a stack is collapsed),
+        // so make sure all tiles in this z-layer share the same sectionId
+        final Set<String> sectionIds = tileBoundsList.stream()
+                .map(TileBounds::getSectionId)
+                .collect(Collectors.toSet());
+        if (sectionIds.size() > 1) {
+            throw new IllegalStateException("z " + z + " in stack " + stack + " has " + sectionIds.size() +
+                                            " different sectionIds " + sectionIds +
+                                            " but all tiles in a z-layer must share the same sectionId");
+        }
+        final String groupId = sectionIds.iterator().next();
 
         final TileBoundsRTree tree = new TileBoundsRTree(z, tileBoundsList);
 
