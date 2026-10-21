@@ -176,10 +176,10 @@ public class BeamCorrectionClient {
 			dataClient.setupDerivedStack(sourceStackMetaData, targetStack);
 
 			int correctedCount = 0;
-			int skippedCount = 0;
 
 			for (final Double z : zValues) {
 				final ResolvedTileSpecCollection resolvedTiles = dataClient.getResolvedTiles(stack, z);
+				int skippedCount = 0;
 
 				for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
 					final String tileId = tileSpec.getTileId();
@@ -213,7 +213,7 @@ public class BeamCorrectionClient {
 					final double degree0 = access.get().getRealDouble();
 
 					if (Double.isNaN(gain) || Double.isNaN(degree0)) {
-						// matches the author's behavior of leaving beams with no (NaN) correction untouched
+						// NaN values usually mean the xlog data is incomplete for this tile
 						LOG.warn("correctStack: skipping tile {} - no correction (gain={}, degree0={}) at scan={}, slab={}, sfov={}",
 								 tileId, gain, degree0, scan, magc, sfov);
 						skippedCount++;
@@ -232,6 +232,15 @@ public class BeamCorrectionClient {
 					correctedCount++;
 				}
 
+				// fail before saving so that a partially corrected layer is never written
+				// (the skipped tiles are logged individually above)
+				if (skippedCount > 0) {
+					throw new IllegalStateException(
+							"could not correct " + skippedCount + " of " + resolvedTiles.getTileCount() +
+							" tiles in z " + z + " of " + stack + " because the beam correction data in " +
+							beam.zarrPath + " is missing or NaN for them, see log for details");
+				}
+
 				dataClient.saveResolvedTiles(resolvedTiles, targetStack, z);
 				LOG.info("correctStack: saved z {} to {}", z, targetStack);
 			}
@@ -240,8 +249,8 @@ public class BeamCorrectionClient {
 				dataClient.setStackState(targetStack, StackMetaData.StackState.COMPLETE);
 			}
 
-			LOG.info("correctStack: exit, applied degree-0 homogenization to {} tiles and skipped {} tiles across {} layers of {} (target stack {})",
-					 correctedCount, skippedCount, zValues.size(), stack, targetStack);
+			LOG.info("correctStack: exit, applied degree-0 homogenization to {} tiles across {} layers of {} (target stack {})",
+					 correctedCount, zValues.size(), stack, targetStack);
 		}
 	}
 
