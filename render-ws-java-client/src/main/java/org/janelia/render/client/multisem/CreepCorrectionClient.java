@@ -29,7 +29,9 @@ import org.slf4j.LoggerFactory;
 
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
+import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.NotEnoughDataPointsException;
+import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
 /**
@@ -298,6 +300,14 @@ public class CreepCorrectionClient {
 
     /**
      * Estimates the y-stretch factor from a set of point matches by fitting an affine model with RANSAC.
+     * <br/><br/>
+     * A least-squares fit treats the source points as exact, so noise in the source points
+     * biases the fitted y-stretch toward 0.  The bias is large when the matches span only a small
+     * range in y, as in a tile overlap.  The bias of the inverse fit is in the opposite direction,
+     * so the geometric mean of the forward y-stretch and the inverse of the backward y-stretch cancels it
+     * to first order.  Both fits use the same RANSAC inliers.
+     *
+     * @param  candidates  point matches from the upper tile (p) to the lower tile (q).
      *
      * @return the y-stretch (m11 element of the affine), or {@link Double#NaN} on failure
      */
@@ -325,10 +335,28 @@ public class CreepCorrectionClient {
             return Double.NaN;
         }
 
+        // build the flipped matches from local coordinates, because RANSAC has set the world
+        // coordinates of the p points to their transformed positions and fit uses them for targets
+        final List<PointMatch> flippedInliers = new ArrayList<>(inliers.size());
+        for (final PointMatch pm : inliers) {
+            flippedInliers.add(new PointMatch(new Point(pm.getP2().getL().clone()),
+                                              new Point(pm.getP1().getL().clone()),
+                                              pm.getWeight()));
+        }
+
+        final AffineModel2D inverseModel = new AffineModel2D();
+        try {
+            inverseModel.fit(flippedInliers);
+        } catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+            return Double.NaN;
+        }
+
+        // affineData layout: [m00, m10, m01, m11, m02, m12], m11 = y-stretch
         final double[] affineData = new double[6];
+        final double[] inverseAffineData = new double[6];
         model.toArray(affineData);
-        // affineData layout: [m00, m10, m01, m11, m02, m12]
-        return affineData[3]; // m11 = y-stretch
+        inverseModel.toArray(inverseAffineData);
+        return Math.sqrt(affineData[3] / inverseAffineData[3]);
     }
 
     /**
