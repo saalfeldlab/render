@@ -7,6 +7,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,6 +23,7 @@ import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.TransformSpecMetaData;
 import org.janelia.alignment.transform.StageCreepCorrectionTransform;
 import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
@@ -187,17 +189,72 @@ public class CreepCorrectionClient {
         }
 
         // validate and build result
-        final MfovResult result = validateStretches(stretches, mfov);
+        MfovResult result = validateStretches(stretches, mfov);
 
         if (result.isValid) {
             final Set<String> mfovTileIds = mfovTiles.stream()
                     .map(TileSpec::getTileId)
                     .collect(Collectors.toSet());
+
+            // match coordinates are relative to the min corner of each tile's normalized bounds,
+            // and the correction moves that corner, so capture it before and after the correction
+            // for use when the matches are transformed
+            final Map<String, double[]> tileIdToMinBefore = new HashMap<>();
+            for (final String tileId : mfovTileIds) {
+                tileIdToMinBefore.put(tileId, getNormalizedMin(resolvedTiles.getTileSpec(tileId)));
+            }
+
             applyCorrectionToMFOV(resolvedTiles, mfovTileIds, result.correctionSpec);
+
+            final Map<String, MatchFrameOrigins> tileIdToMatchFrameOrigins = new HashMap<>();
+            for (final String tileId : mfovTileIds) {
+                tileIdToMatchFrameOrigins.put(tileId,
+                                              new MatchFrameOrigins(tileIdToMinBefore.get(tileId),
+                                                                    getNormalizedMin(resolvedTiles.getTileSpec(tileId))));
+            }
+
+            result = result.withMatchFrameOrigins(tileIdToMatchFrameOrigins);
         }
 
         return result;
     }
+
+    /**
+     * Mirrors the render web service's normalizeForMatching handling (see TileDataService) to find the
+     * min corner of the tile's bounds in the space where its point match coordinates are defined.
+     *
+     * @return the [minX, minY] of the specified tile's bounds after normalizing it for matching.
+     */
+    static double[] getNormalizedMin(final TileSpec tileSpec) {
+
+        final TileSpec normalizedTileSpec = tileSpec.slowClone();
+
+        if (normalizedTileSpec.hasTransformWithLabel(TransformSpecMetaData.LENS_CORRECTION_LABEL) ||
+            normalizedTileSpec.hasTransformWithLabel(TransformSpecMetaData.INCLUDE_LABEL)) {
+
+            normalizedTileSpec.flattenAndFilterTransforms(null,
+                                                          EXCLUDE_AFTER_LENS_OR_INCLUDE,
+                                                          null);
+
+        } else {
+
+            normalizedTileSpec.flattenTransforms();
+
+            // remove the last (alignment) transform and then all but the first 2 remaining transforms
+            normalizedTileSpec.removeLastTransformSpec();
+            while (normalizedTileSpec.getTransforms().size() > 2) {
+                normalizedTileSpec.removeLastTransformSpec();
+            }
+        }
+
+        normalizedTileSpec.deriveBoundingBox(normalizedTileSpec.getMeshCellSize(), true);
+
+        return new double[] { normalizedTileSpec.getMinX(), normalizedTileSpec.getMinY() };
+    }
+
+    private static final Set<String> EXCLUDE_AFTER_LENS_OR_INCLUDE =
+            new HashSet<>(Arrays.asList(TransformSpecMetaData.LENS_CORRECTION_LABEL,
+                                        TransformSpecMetaData.INCLUDE_LABEL));
 
     /**
      * Finds geometric neighbor pairs (lower-right and lower-left) using stage positions,
@@ -425,8 +482,14 @@ public class CreepCorrectionClient {
     }
 
     /**
-     * Transforms all matches for a given group (section) using the collected creep corrections.
+     * Transforms all matches with the specified pGroupId using the collected creep corrections.
      * Handles both within-group and outside-group matches.
+     * <br/><br/>
+     * Outside-group matches are only transformed when their pGroupId is the specified group.
+     * The outside-group query also returns matches where the specified group is the qGroupId,
+     * but those are transformed when their own pGroupId is processed.
+     * This ensures that each match is transformed exactly once when the groups are processed
+     * in parallel and the source and target match collections are the same.
      *
      * @param  allResults  creep correction results keyed by group (section) id, not z.
      */
@@ -443,7 +506,14 @@ public class CreepCorrectionClient {
         final List<CanvasMatches> outsideMatches = sourceMatchClient.getMatchesOutsideGroup(groupId, false);
 
         final List<CanvasMatches> allMatches = new ArrayList<>(withinMatches);
-        allMatches.addAll(outsideMatches);
+        for (final CanvasMatches cm : outsideMatches) {
+            if (groupId.equals(cm.getpGroupId())) {
+                allMatches.add(cm);
+            }
+        }
+
+        LOG.info("transformMatchesForGroup: groupId={} has {} within-group matches and {} of {} outside-group matches with it as the pGroupId",
+                 groupId, withinMatches.size(), allMatches.size() - withinMatches.size(), outsideMatches.size());
 
         if (allMatches.isEmpty()) {
             LOG.info("transformMatchesForGroup: no matches found for groupId={}", groupId);
@@ -489,39 +559,73 @@ public class CreepCorrectionClient {
 
     /**
      * Transforms match coordinates in place by applying creep correction.
-     * Match coordinates are in post-lens/pre-alignment space (montage matches are derived before
-     * alignment), which is the same space where the CC transform operates (it is inserted
-     * before the alignment transform). So we apply CC directly without touching alignment.
+     * <br/><br/>
+     * Match coordinates are in the tile's space after it has been normalized for matching
+     * (all transforms except the last alignment transform), which is the space the CC transform
+     * operates in (it is inserted before the alignment transform).  However, match coordinates are
+     * relative to the min corner of the normalized tile bounds and the CC transform needs absolute
+     * coordinates because it varies with y.  The CC transform also moves the min corner,
+     * so coordinates are shifted to absolute space using the min corner from before the correction,
+     * transformed, and then shifted back using the min corner from after the correction.
      */
     static void transformMatchCoordinates(final double[][] coords,
                                           final String tileId,
                                           final String groupId,
                                           final Map<String, List<MfovResult>> allResults) {
 
-        // look up CC spec for this tile's mFOV
+        // look up CC result for this tile's mFOV
         final String mfov = MultiSemUtilities.getMagcMfovForTileId(tileId);
         final List<MfovResult> layerResults = allResults.get(groupId);
         if (layerResults == null) {
             return;
         }
 
-        TransformSpec ccSpec = null;
+        MfovResult ccResult = null;
         for (final MfovResult r : layerResults) {
             if (r.mfov.equals(mfov) && r.correctionSpec != null) {
-                ccSpec = r.correctionSpec;
+                ccResult = r;
                 break;
             }
         }
-        if (ccSpec == null) {
+        if (ccResult == null) {
             return;
         }
 
-        final CoordinateTransform ccTransform = ccSpec.getNewInstance();
+        final MatchFrameOrigins origins = ccResult.tileIdToMatchFrameOrigins.get(tileId);
+        if (origins == null) {
+            throw new IllegalStateException("no match frame origins found for tile " + tileId +
+                                            " in corrected mFOV " + mfov + " of group " + groupId);
+        }
+
+        final CoordinateTransform ccTransform = ccResult.correctionSpec.getNewInstance();
         for (int i = 0; i < coords[0].length; i++) {
-            final double[] point = new double[] { coords[0][i], coords[1][i] };
+            final double[] point = new double[] {
+                    coords[0][i] + origins.beforeMinX,
+                    coords[1][i] + origins.beforeMinY
+            };
             ccTransform.applyInPlace(point);
-            coords[0][i] = point[0];
-            coords[1][i] = point[1];
+            coords[0][i] = point[0] - origins.afterMinX;
+            coords[1][i] = point[1] - origins.afterMinY;
+        }
+    }
+
+    /**
+     * Min corners of a tile's normalized bounds before and after creep correction.
+     * Point match coordinates are relative to these corners.
+     */
+    public static class MatchFrameOrigins implements Serializable {
+
+        public final double beforeMinX;
+        public final double beforeMinY;
+        public final double afterMinX;
+        public final double afterMinY;
+
+        MatchFrameOrigins(final double[] beforeMin,
+                          final double[] afterMin) {
+            this.beforeMinX = beforeMin[0];
+            this.beforeMinY = beforeMin[1];
+            this.afterMinX = afterMin[0];
+            this.afterMinY = afterMin[1];
         }
     }
 
@@ -540,6 +644,9 @@ public class CreepCorrectionClient {
         public final String diagnosticMessage;
         public final TransformSpec correctionSpec;
 
+        /** match frame origins for each corrected tile in the mFOV (empty if the mFOV was not corrected) */
+        public final Map<String, MatchFrameOrigins> tileIdToMatchFrameOrigins;
+
         MfovResult(final String mfov,
                    final double medianStretch,
                    final double stddev,
@@ -548,6 +655,19 @@ public class CreepCorrectionClient {
                    final int totalPairs,
                    final TransformSpec correctionSpec,
                    final String diagnosticMessage) {
+            this(mfov, medianStretch, stddev, amplitude, validPairs, totalPairs, correctionSpec, diagnosticMessage,
+                 new HashMap<>());
+        }
+
+        private MfovResult(final String mfov,
+                           final double medianStretch,
+                           final double stddev,
+                           final double amplitude,
+                           final int validPairs,
+                           final int totalPairs,
+                           final TransformSpec correctionSpec,
+                           final String diagnosticMessage,
+                           final HashMap<String, MatchFrameOrigins> tileIdToMatchFrameOrigins) {
             this.mfov = mfov;
             this.medianStretch = medianStretch;
             this.stddev = stddev;
@@ -557,10 +677,17 @@ public class CreepCorrectionClient {
             this.isValid = correctionSpec != null;
             this.diagnosticMessage = diagnosticMessage;
             this.correctionSpec = correctionSpec;
+            this.tileIdToMatchFrameOrigins = tileIdToMatchFrameOrigins;
         }
 
         static MfovResult invalid(final String mfov, final int totalPairs, final String reason) {
             return new MfovResult(mfov, Double.NaN, Double.NaN, Double.NaN, 0, totalPairs, null, reason);
+        }
+
+        /** @return a copy of this result with the specified match frame origins for its corrected tiles. */
+        MfovResult withMatchFrameOrigins(final Map<String, MatchFrameOrigins> tileIdToMatchFrameOrigins) {
+            return new MfovResult(mfov, medianStretch, stddev, amplitude, validPairs, totalPairs, correctionSpec,
+                                  diagnosticMessage, new HashMap<>(tileIdToMatchFrameOrigins));
         }
 
         public String toCsvRow() {
