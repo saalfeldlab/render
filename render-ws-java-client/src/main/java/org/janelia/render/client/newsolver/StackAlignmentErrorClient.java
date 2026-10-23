@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InterpolatedAffineModel2D;
@@ -137,7 +136,7 @@ public class StackAlignmentErrorClient {
 				metricToPairMap.put(metric, metricToErrors.get(metric).buildPairToErrorMap());
 			}
 		}
-		final List<ErrorMetric> sortedMetrics = metricToErrors.keySet().stream().sorted().collect(Collectors.toList());
+		final List<ErrorMetric> sortedMetrics = metricToErrors.keySet().stream().sorted().toList();
 
 		for (final ErrorMetric metric : metricToErrors.keySet()) {
 
@@ -145,7 +144,7 @@ public class StackAlignmentErrorClient {
 
 			final Map<String, AlignmentErrors> errorsByPGroupId = errors.splitByPGroupId();
 			final List<Double> sortedPZs = errorsByPGroupId.keySet().stream()
-					.mapToDouble(Double::parseDouble).sorted().boxed().collect(Collectors.toList());
+					.mapToDouble(Double::parseDouble).sorted().boxed().toList();
 
 			for (final Double pZ : sortedPZs) {
 				final AlignmentErrors errorsForPZ = errorsByPGroupId.get(pZ.toString());
@@ -343,17 +342,7 @@ public class StackAlignmentErrorClient {
 	private static TileSpec buildTileSpecUsedForMatchDerivation(final TileSpec alignedTileSpec) {
 
 		final TileSpec matchTileSpec = alignedTileSpec.slowClone();
-
-		matchTileSpec.flattenTransforms();
-
-		// Assume the last transform is an affine that positions the tile in the world and remove it.
-		matchTileSpec.removeLastTransformSpec();
-		// If the tile still has more than 2 transforms, remove all but the first 2.
-		// This assumes that the first 2 transforms are for lens correction.
-		while (matchTileSpec.getTransforms().size() > 2) {
-			matchTileSpec.removeLastTransformSpec();
-		}
-
+		matchTileSpec.normalizeForMatching();
 		return matchTileSpec;
 	}
 

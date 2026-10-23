@@ -1,8 +1,6 @@
 package org.janelia.render.service;
 
 import java.net.UnknownHostException;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -20,7 +18,6 @@ import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpecMetaData;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.service.dao.RenderDao;
@@ -316,8 +313,8 @@ public class TileDataService {
 
         final boolean useLabelNormalization =
                 (excludeAllTransforms != null) ||
-                ((excludeAfterLastLabels != null) && (excludeAfterLastLabels.size() > 0)) ||
-                ((excludeFirstAndAllAfterLabels != null) && (excludeFirstAndAllAfterLabels.size() > 0));
+                ((excludeAfterLastLabels != null) && (! excludeAfterLastLabels.isEmpty())) ||
+                ((excludeFirstAndAllAfterLabels != null) && (! excludeFirstAndAllAfterLabels.isEmpty()));
 
         final boolean useLegacyNormalization = (normalizeForMatching != null) && normalizeForMatching;
 
@@ -333,30 +330,8 @@ public class TileDataService {
 
         } else if (useLegacyNormalization) {
 
-            if (tileSpec.hasTransformWithLabel(TransformSpecMetaData.LENS_CORRECTION_LABEL) ||
-                tileSpec.hasTransformWithLabel(TransformSpecMetaData.INCLUDE_LABEL)) {
-
-                // Handle a legacy client request for a stack that has labelled transforms ...
-                tileSpec.flattenAndFilterTransforms(null,
-                                                    EXCLUDE_AFTER_LENS_OR_INCLUDE,
-                                                    null);
-
-            } else {
-
-                // Handle a legacy client request for a stack without labelled transforms ...
-                tileSpec.flattenTransforms();
-
-                // Assume the last transform is an affine that positions the tile in the world and remove it.
-                tileSpec.removeLastTransformSpec();
-
-                // If the tile still has more than 2 transforms, remove all but the first 2.
-                // This assumes that the first 2 transforms are for lens correction.
-                while (tileSpec.getTransforms().size() > 2) {
-                    tileSpec.removeLastTransformSpec();
-                }
-            }
-
-            tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);  // transforms changed, so re-calculate box
+            // Handle a legacy client request for a stack with or without labelled transforms ...
+            tileSpec.normalizeForMatching();
 
         } else {
 
@@ -453,8 +428,4 @@ public class TileDataService {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TileDataService.class);
-
-    private static final Set<String> EXCLUDE_AFTER_LENS_OR_INCLUDE =
-            new HashSet<>(Arrays.asList(TransformSpecMetaData.LENS_CORRECTION_LABEL,
-                                        TransformSpecMetaData.INCLUDE_LABEL));
 }

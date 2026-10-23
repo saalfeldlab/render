@@ -542,7 +542,7 @@ public class TileSpec implements Serializable {
         String firstChannelName = null;
         final List<ChannelSpec> channelSpecs = getAllChannels();
         if (! channelSpecs.isEmpty()) {
-            firstChannelName = channelSpecs.get(0).getName();
+            firstChannelName = channelSpecs.getFirst().getName();
         }
         return firstChannelName;
     }
@@ -581,7 +581,7 @@ public class TileSpec implements Serializable {
                 throw new IllegalStateException(channels.size() +
                                                 " channels exist but must only have one to convert to legacy form");
             }
-            final ChannelSpec channelSpec = channels.get(0);
+            final ChannelSpec channelSpec = channels.getFirst();
             channels = null;
             minIntensity = channelSpec.getMinIntensity();
             maxIntensity = channelSpec.getMaxIntensity();
@@ -604,7 +604,7 @@ public class TileSpec implements Serializable {
         if ((channels == null) || channels.isEmpty()) {
             firstEntry = mipmapLevels.firstEntry();
         } else {
-            firstEntry = channels.get(0).getFirstMipmapEntry();
+            firstEntry = channels.getFirst().getFirstMipmapEntry();
         }
         return firstEntry;
     }
@@ -656,7 +656,7 @@ public class TileSpec implements Serializable {
     public FilterSpec getFilterSpec() {
         FilterSpec spec = filterSpec;
         if ((spec == null) && (channels != null) && (! channels.isEmpty())) {
-            spec = channels.get(0).getFilterSpec();
+            spec = channels.getFirst().getFilterSpec();
         }
         return spec;
     }
@@ -715,7 +715,7 @@ public class TileSpec implements Serializable {
             levels = mipmapLevels;
             filterSpec = null;
         } else {
-            final ChannelSpec firstChannelSpec = channels.get(0);
+            final ChannelSpec firstChannelSpec = channels.getFirst();
             levels = firstChannelSpec.getMipmapLevels();
             firstChannelSpec.setFilterSpec(null);
         }
@@ -828,6 +828,50 @@ public class TileSpec implements Serializable {
             transforms = transforms.flattenAndFilter(excludeAfterLastLabels, excludeFirstAndAllAfterLabels);
         }
     }
+
+    /**
+     * Normalizes this tile for point match derivation by removing its non-lens correction transforms
+     * and then re-deriving its bounding box.
+     * Point match coordinates are relative to the min corner of the normalized bounding box.
+     * <br/><br/>
+     * This is the single implementation of the web service's normalizeForMatching handling,
+     * so clients that need to work in match coordinate space should use it rather than copy it.
+     * <ul>
+     *   <li>
+     *     If the tile has a transform labelled as a lens correction or include transform,
+     *     all transforms after the last labelled transform are removed.
+     *   </li>
+     *   <li>
+     *     Otherwise, the last transform is assumed to be an affine that positions the tile in the world
+     *     and it is removed.  Then all but the first 2 remaining transforms are removed
+     *     because the first 2 are assumed to be for lens correction.
+     *   </li>
+     * </ul>
+     */
+    public void normalizeForMatching() {
+
+        if (hasTransformWithLabel(TransformSpecMetaData.LENS_CORRECTION_LABEL) ||
+            hasTransformWithLabel(TransformSpecMetaData.INCLUDE_LABEL)) {
+
+            flattenAndFilterTransforms(null, EXCLUDE_AFTER_LENS_OR_INCLUDE, null);
+
+        } else {
+
+            flattenTransforms();
+
+            removeLastTransformSpec();
+
+            while (getTransforms().size() > 2) {
+                removeLastTransformSpec();
+            }
+        }
+
+        deriveBoundingBox(getMeshCellSize(), true);  // transforms changed, so re-calculate box
+    }
+
+    private static final Set<String> EXCLUDE_AFTER_LENS_OR_INCLUDE =
+            new HashSet<>(Arrays.asList(TransformSpecMetaData.LENS_CORRECTION_LABEL,
+                                        TransformSpecMetaData.INCLUDE_LABEL));
 
     /**
      * @throws IllegalArgumentException
