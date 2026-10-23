@@ -524,15 +524,20 @@ public class CreepCorrectionClient {
     /**
      * Transforms match coordinates in place by applying creep correction.
      * <br/><br/>
-     * Match coordinates are in the tile's space after it has been normalized for matching
-     * (all transforms except the last alignment transform), which is the space the CC transform
-     * operates in (it is inserted before the alignment transform).  However, match coordinates are
-     * relative to the min corner of the normalized tile bounds and the CC transform needs absolute
-     * coordinates because it varies with y.  Coordinates are therefore shifted to absolute space using
-     * the min corner from before the correction, transformed, and shifted back by the same corner.
-     * The CC transform also moves the min corner (by an amount that depends on the mFOV's amplitude),
-     * but solvers apply the alignment transform directly to match coordinates without accounting for
-     * that corner, so shifting back by the moved corner would offset each corrected mFOV.
+     * Match coordinates are in the space of the tile after it is normalized for matching.
+     * This space includes all transforms except the last (alignment) transform.
+     * The CC transform operates in this space, because it is inserted before the alignment transform.
+     * <br/><br/>
+     * Match coordinates are relative to the match frame origin of the tile.
+     * The match frame origin is the min corner of the normalized tile bounds before the correction.
+     * The CC transform varies with y, so it needs absolute coordinates.
+     * Thus, this method adds the match frame origin, applies the CC transform,
+     * and then subtracts the same match frame origin.
+     * <br/><br/>
+     * The CC transform also moves the min corner of the normalized tile bounds.
+     * The amount depends on the amplitude of the mFOV.
+     * Do not subtract the moved min corner: solvers apply the alignment transform directly
+     * to match coordinates and ignore the min corner, so each corrected mFOV would be offset.
      */
     static void transformMatchCoordinates(final double[][] coords,
                                           final String tileId,
