@@ -7,7 +7,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,7 +22,6 @@ import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.alignment.spec.TransformSpecMetaData;
 import org.janelia.alignment.transform.StageCreepCorrectionTransform;
 import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
@@ -220,41 +218,16 @@ public class CreepCorrectionClient {
     }
 
     /**
-     * Mirrors the render web service's normalizeForMatching handling (see TileDataService) to find the
+     * Uses the same normalization as the render web service's normalizeForMatching handling to find the
      * min corner of the tile's bounds in the space where its point match coordinates are defined.
      *
      * @return the [minX, minY] of the specified tile's bounds after normalizing it for matching.
      */
     static double[] getNormalizedMin(final TileSpec tileSpec) {
-
         final TileSpec normalizedTileSpec = tileSpec.slowClone();
-
-        if (normalizedTileSpec.hasTransformWithLabel(TransformSpecMetaData.LENS_CORRECTION_LABEL) ||
-            normalizedTileSpec.hasTransformWithLabel(TransformSpecMetaData.INCLUDE_LABEL)) {
-
-            normalizedTileSpec.flattenAndFilterTransforms(null,
-                                                          EXCLUDE_AFTER_LENS_OR_INCLUDE,
-                                                          null);
-
-        } else {
-
-            normalizedTileSpec.flattenTransforms();
-
-            // remove the last (alignment) transform and then all but the first 2 remaining transforms
-            normalizedTileSpec.removeLastTransformSpec();
-            while (normalizedTileSpec.getTransforms().size() > 2) {
-                normalizedTileSpec.removeLastTransformSpec();
-            }
-        }
-
-        normalizedTileSpec.deriveBoundingBox(normalizedTileSpec.getMeshCellSize(), true);
-
+        normalizedTileSpec.normalizeForMatching();
         return new double[] { normalizedTileSpec.getMinX(), normalizedTileSpec.getMinY() };
     }
-
-    private static final Set<String> EXCLUDE_AFTER_LENS_OR_INCLUDE =
-            new HashSet<>(Arrays.asList(TransformSpecMetaData.LENS_CORRECTION_LABEL,
-                                        TransformSpecMetaData.INCLUDE_LABEL));
 
     /**
      * Finds geometric neighbor pairs (lower-right and lower-left) using stage positions,
