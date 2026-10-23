@@ -168,7 +168,7 @@ public class CreepCorrectionClient {
         final List<Double> stretches = new ArrayList<>();
         int pairsWithoutMatches = 0;
         for (final TilePair pair : neighborPairs) {
-            final String key = pairKey(pair.pTileId, pair.qTileId);
+            final String key = pairKey(pair.upperTileId, pair.lowerTileId);
             final CanvasMatches matches = pairKeyToMatches.get(key);
 
             if (matches == null) {
@@ -176,8 +176,13 @@ public class CreepCorrectionClient {
                 continue;
             }
 
-            final double yStretch = estimateYStretchForPair(
-                    CanvasMatchResult.convertMatchesToPointMatchList(matches.getMatches()));
+            // matches are stored in tile ID order, but the stretch must be estimated from the upper to the lower tile
+            List<PointMatch> pointMatches = CanvasMatchResult.convertMatchesToPointMatchList(matches.getMatches());
+            if (! matches.getpId().equals(pair.upperTileId)) {
+                pointMatches = new ArrayList<>(PointMatch.flip(pointMatches));
+            }
+
+            final double yStretch = estimateYStretchForPair(pointMatches);
             stretches.add(yStretch);
         }
 
@@ -286,10 +291,7 @@ public class CreepCorrectionClient {
         }
 
         if (closestId != null) {
-            // normalize pair ordering so pairKey lookups work regardless of match storage order
-            final String pId = targetTileId.compareTo(closestId) < 0 ? targetTileId : closestId;
-            final String qId = targetTileId.compareTo(closestId) < 0 ? closestId : targetTileId;
-            return java.util.Optional.of(new TilePair(pId, qId));
+            return java.util.Optional.of(new TilePair(targetTileId, closestId));
         }
         return java.util.Optional.empty();
     }
@@ -644,14 +646,14 @@ public class CreepCorrectionClient {
         }
     }
 
-    /** A pair of tile IDs representing geometrically adjacent sFOVs. */
+    /** A pair of tile IDs representing geometrically adjacent sFOVs, where the second tile is below the first. */
     static class TilePair {
-        final String pTileId;
-        final String qTileId;
+        final String upperTileId;
+        final String lowerTileId;
 
-        TilePair(final String pTileId, final String qTileId) {
-            this.pTileId = pTileId;
-            this.qTileId = qTileId;
+        TilePair(final String upperTileId, final String lowerTileId) {
+            this.upperTileId = upperTileId;
+            this.lowerTileId = lowerTileId;
         }
     }
 
