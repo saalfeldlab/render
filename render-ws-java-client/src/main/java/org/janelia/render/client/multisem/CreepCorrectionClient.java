@@ -195,23 +195,15 @@ public class CreepCorrectionClient {
                     .collect(Collectors.toSet());
 
             // match coordinates are relative to the min corner of each tile's normalized bounds,
-            // and the correction moves that corner, so capture it before and after the correction
-            // for use when the matches are transformed
-            final Map<String, double[]> tileIdToMinBefore = new HashMap<>();
+            // so capture that corner before the correction moves it for use when the matches are transformed
+            final Map<String, double[]> tileIdToMatchFrameOrigin = new HashMap<>();
             for (final String tileId : mfovTileIds) {
-                tileIdToMinBefore.put(tileId, getNormalizedMin(resolvedTiles.getTileSpec(tileId)));
+                tileIdToMatchFrameOrigin.put(tileId, getNormalizedMin(resolvedTiles.getTileSpec(tileId)));
             }
 
             applyCorrectionToMFOV(resolvedTiles, mfovTileIds, result.correctionSpec);
 
-            final Map<String, MatchFrameOrigins> tileIdToMatchFrameOrigins = new HashMap<>();
-            for (final String tileId : mfovTileIds) {
-                tileIdToMatchFrameOrigins.put(tileId,
-                                              new MatchFrameOrigins(tileIdToMinBefore.get(tileId),
-                                                                    getNormalizedMin(resolvedTiles.getTileSpec(tileId))));
-            }
-
-            result = result.withMatchFrameOrigins(tileIdToMatchFrameOrigins);
+            result = result.withMatchFrameOrigin(tileIdToMatchFrameOrigin);
         }
 
         return result;
@@ -537,9 +529,11 @@ public class CreepCorrectionClient {
      * (all transforms except the last alignment transform), which is the space the CC transform
      * operates in (it is inserted before the alignment transform).  However, match coordinates are
      * relative to the min corner of the normalized tile bounds and the CC transform needs absolute
-     * coordinates because it varies with y.  The CC transform also moves the min corner,
-     * so coordinates are shifted to absolute space using the min corner from before the correction,
-     * transformed, and then shifted back using the min corner from after the correction.
+     * coordinates because it varies with y.  Coordinates are therefore shifted to absolute space using
+     * the min corner from before the correction, transformed, and shifted back by the same corner.
+     * The CC transform also moves the min corner (by an amount that depends on the mFOV's amplitude),
+     * but solvers apply the alignment transform directly to match coordinates without accounting for
+     * that corner, so shifting back by the moved corner would offset each corrected mFOV.
      */
     static void transformMatchCoordinates(final double[][] coords,
                                           final String tileId,
@@ -564,41 +558,18 @@ public class CreepCorrectionClient {
             return;
         }
 
-        final MatchFrameOrigins origins = ccResult.tileIdToMatchFrameOrigins.get(tileId);
-        if (origins == null) {
-            throw new IllegalStateException("no match frame origins found for tile " + tileId +
+        final double[] origin = ccResult.tileIdToMatchFrameOrigin.get(tileId);
+        if (origin == null) {
+            throw new IllegalStateException("no match frame origin found for tile " + tileId +
                                             " in corrected mFOV " + mfov + " of group " + groupId);
         }
 
         final CoordinateTransform ccTransform = ccResult.correctionSpec.getNewInstance();
         for (int i = 0; i < coords[0].length; i++) {
-            final double[] point = new double[] {
-                    coords[0][i] + origins.beforeMinX,
-                    coords[1][i] + origins.beforeMinY
-            };
+            final double[] point = new double[] { coords[0][i] + origin[0], coords[1][i] + origin[1] };
             ccTransform.applyInPlace(point);
-            coords[0][i] = point[0] - origins.afterMinX;
-            coords[1][i] = point[1] - origins.afterMinY;
-        }
-    }
-
-    /**
-     * Min corners of a tile's normalized bounds before and after creep correction.
-     * Point match coordinates are relative to these corners.
-     */
-    public static class MatchFrameOrigins implements Serializable {
-
-        public final double beforeMinX;
-        public final double beforeMinY;
-        public final double afterMinX;
-        public final double afterMinY;
-
-        MatchFrameOrigins(final double[] beforeMin,
-                          final double[] afterMin) {
-            this.beforeMinX = beforeMin[0];
-            this.beforeMinY = beforeMin[1];
-            this.afterMinX = afterMin[0];
-            this.afterMinY = afterMin[1];
+            coords[0][i] = point[0] - origin[0];
+            coords[1][i] = point[1] - origin[1];
         }
     }
 
@@ -617,8 +588,8 @@ public class CreepCorrectionClient {
         public final String diagnosticMessage;
         public final TransformSpec correctionSpec;
 
-        /** match frame origins for each corrected tile in the mFOV (empty if the mFOV was not corrected) */
-        public final Map<String, MatchFrameOrigins> tileIdToMatchFrameOrigins;
+        /** [minX, minY] match frame origin for each corrected tile in the mFOV (empty if the mFOV was not corrected) */
+        public final Map<String, double[]> tileIdToMatchFrameOrigin;
 
         MfovResult(final String mfov,
                    final double medianStretch,
@@ -640,7 +611,7 @@ public class CreepCorrectionClient {
                            final int totalPairs,
                            final TransformSpec correctionSpec,
                            final String diagnosticMessage,
-                           final HashMap<String, MatchFrameOrigins> tileIdToMatchFrameOrigins) {
+                           final HashMap<String, double[]> tileIdToMatchFrameOrigin) {
             this.mfov = mfov;
             this.medianStretch = medianStretch;
             this.stddev = stddev;
@@ -650,7 +621,7 @@ public class CreepCorrectionClient {
             this.isValid = correctionSpec != null;
             this.diagnosticMessage = diagnosticMessage;
             this.correctionSpec = correctionSpec;
-            this.tileIdToMatchFrameOrigins = tileIdToMatchFrameOrigins;
+            this.tileIdToMatchFrameOrigin = tileIdToMatchFrameOrigin;
         }
 
         static MfovResult invalid(final String mfov, final int totalPairs, final String reason) {
@@ -658,9 +629,9 @@ public class CreepCorrectionClient {
         }
 
         /** @return a copy of this result with the specified match frame origins for its corrected tiles. */
-        MfovResult withMatchFrameOrigins(final Map<String, MatchFrameOrigins> tileIdToMatchFrameOrigins) {
+        MfovResult withMatchFrameOrigin(final Map<String, double[]> tileIdToMatchFrameOrigin) {
             return new MfovResult(mfov, medianStretch, stddev, amplitude, validPairs, totalPairs, correctionSpec,
-                                  diagnosticMessage, new HashMap<>(tileIdToMatchFrameOrigins));
+                                  diagnosticMessage, new HashMap<>(tileIdToMatchFrameOrigin));
         }
 
         public String toCsvRow() {
