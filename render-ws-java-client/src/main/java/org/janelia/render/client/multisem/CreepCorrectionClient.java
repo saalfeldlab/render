@@ -49,8 +49,8 @@ public class CreepCorrectionClient {
     private static final double TAU_1 = 4.0;       // seconds
     private static final double PIXEL_DWELL = 800e-9; // seconds
     private static final double LINE_WIDTH = 2000;  // pixels
-    private static final double L0 = TAU_0 / (PIXEL_DWELL * LINE_WIDTH);  // 262500 lines
-    private static final double L1 = TAU_1 / (PIXEL_DWELL * LINE_WIDTH);  // 2500000 lines
+    private static final double L0 = TAU_0 / (PIXEL_DWELL * LINE_WIDTH);  // 262.5 lines
+    private static final double L1 = TAU_1 / (PIXEL_DWELL * LINE_WIDTH);  // 2500 lines
 
     // line numbers used for stretch-to-amplitude conversion
     private static final int TOP_LINE = 50;
@@ -331,7 +331,7 @@ public class CreepCorrectionClient {
 
     /**
      * Computes the creep correction amplitude from the median y-stretch.
-     * Returns a negative value (same sign as the Python prototype's {@code calculate_a_helper_func}),
+     * Returns a positive value for stretches below 1 (e.g. about 3 for a stretch of 0.99),
      * which is used directly as the coefficient in {@link StageCreepCorrectionTransform}'s backward map:
      * {@code y_source = y_world + a * exp(-y_world / L)}.
      */
@@ -417,9 +417,8 @@ public class CreepCorrectionClient {
 
     /**
      * Builds a {@link LeafTransformSpec} for the creep correction using {@code StageCreepCorrectionTransform}.
-     * The amplitude is negative (same as the Python prototype), defining the backward map
-     * {@code y_s = y_w + a*exp(-y_w/L0) + a*exp(-y_w/L1)} where negative {@code a} reads from above,
-     * compressing the top of the image to correct for creep stretch.
+     * The amplitude defines the backward map {@code y_s = y_w + a*exp(-y_w/L0) + a*exp(-y_w/L1)},
+     * where positive {@code a} stretches the top of the image to correct for creep compression.
      */
     static TransformSpec buildCorrectionTransformSpec(final double amplitude) {
         final String dataString = amplitude + "," + L0 + "," + amplitude + "," + L1 + ",1";
