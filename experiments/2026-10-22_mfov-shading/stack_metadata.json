@@ -1,0 +1,36 @@
+{
+  "stackId" : {
+    "owner" : "hess_wafers_60_61",
+    "project" : "test_ic2d",
+    "stack" : "w61_s109_r00_gc_z1"
+  },
+  "state" : "COMPLETE",
+  "lastModifiedTimestamp" : "2026-10-22T17:58:23.976Z",
+  "currentVersionNumber" : 0,
+  "currentVersion" : {
+    "createTimestamp" : "2026-10-22T17:58:19.278Z",
+    "versionNotes" : "derived from stack with owner 'hess_wafers_60_61', project 'w61_serial_100_to_109', and name 'w61_s109_r00_gc_par_crc_align'",
+    "stackResolutionX" : 8.0,
+    "stackResolutionY" : 8.0,
+    "stackResolutionZ" : 8.0
+  },
+  "stats" : {
+    "stackBounds" : {
+      "minX" : -96.0,
+      "minY" : 752.0,
+      "minZ" : 1.0,
+      "maxX" : 129157.0,
+      "maxY" : 104127.0,
+      "maxZ" : 1.0
+    },
+    "sectionCount" : 1,
+    "nonIntegralSectionCount" : 0,
+    "tileCount" : 2639,
+    "transformCount" : 0,
+    "minTileWidth" : 1969,
+    "maxTileWidth" : 2091,
+    "minTileHeight" : 1719,
+    "maxTileHeight" : 1821,
+    "channelNames" : [ ]
+  }
+}

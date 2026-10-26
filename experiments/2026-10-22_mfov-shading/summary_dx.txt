@@ -1,0 +1,10 @@
+stack                                         top-bottom    slope    p2p  (gray levels; slope per MFOV height)
+w61_s109_r00_gc_z1_ic_base                         -3.71     3.91   8.31
+w61_s109_r00_gc_z1_dx2_ic_base                     -4.03     4.22   9.41
+w61_s109_r00_gc_z1_dx3_ic_base                     -4.12     4.28   9.90
+w61_s109_r00_gc_z1_dx4_ic_base                     -4.17     4.31  10.25
+stack                                          step 5px  step 15px  (inside - outside of double-exposed area)
+w61_s109_r00_gc_z1_ic_base                         0.98       0.81
+w61_s109_r00_gc_z1_dx2_ic_base                     0.01      -0.19
+w61_s109_r00_gc_z1_dx3_ic_base                    -0.47      -0.69
+w61_s109_r00_gc_z1_dx4_ic_base                    -0.95      -1.19

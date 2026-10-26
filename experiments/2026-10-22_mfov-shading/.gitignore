@@ -1,0 +1,11 @@
+# generated data (renders, logs, fetched tile specs, figures)
+.claude/
+.mcp.json
+__pycache__/
+local_render_tmp/
+logs/
+renders/
+renders_120_200/
+seam/
+tile_specs.json
+*.png

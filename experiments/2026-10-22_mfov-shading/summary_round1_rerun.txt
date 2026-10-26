@@ -1,0 +1,9 @@
+stack                                         top-bottom    slope    p2p  (gray levels; slope per MFOV height)
+w61_s109_r00_gc_z1                                  1.85    -2.90  14.03
+w61_s109_r00_gc_z1_ic_base                         -3.71     3.91   8.31
+w61_s109_r00_gc_z1_ic_w0                           -3.79     3.98   8.86
+w61_s109_r00_gc_z1_ic_w001                         -3.81     4.01   8.64
+w61_s109_r00_gc_z1_ic_w01                          -3.83     4.04   8.53
+w61_s109_r00_gc_z1_ic_sub15                        -2.40     2.09  11.69
+w61_s109_r00_gc_z1_ic_mul091                       -2.32     1.99  11.93
+w61_s109_r00_gc_z1_ic_slopem15                    -16.09    19.02  22.10
