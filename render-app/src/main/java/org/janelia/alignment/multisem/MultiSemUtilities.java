@@ -267,6 +267,25 @@ public class MultiSemUtilities {
         return tileSpec.getMatchingTransformedPoints(rawLocations);
     }
 
+    /**
+     * @return 0-based row of the tile within its hexagonal MFOV (0 = top, 10 = bottom),
+     *         e.g. 5 for w60_magc0399_scan005_m0013_r46_s01
+     */
+    public static int getMfovRowForTileId(final String tileId) throws IllegalArgumentException {
+        final int scanIndex = tileId.indexOf("_sc"); // tileIds can contain _scan005_ or _sc01234_
+        if ((scanIndex < 0) || (tileId.length() < (scanIndex + 18))) {
+            throw new IllegalArgumentException("MFOV row cannot be derived from tileId " + tileId);
+        }
+        // render order (r01 to r91) is row-major with 6, 7, ..., 11, ..., 7, 6 tiles per row
+        final int renderIndex = Integer.parseInt(tileId.substring(scanIndex + 16, scanIndex + 18)) - 1;
+        int row = 0;
+        for (int rowStart = 0, rowSize = 6; rowStart + rowSize <= renderIndex; row++) {
+            rowStart += rowSize;
+            rowSize += (row < 5) ? 1 : -1;
+        }
+        return row;
+    }
+
     /** @return true if the name is an 'm' followed by 4 digits like 'm0012', otherwise false. */
     public static boolean isSimpleMFOVName(final String name) {
         return SIMPLE_MFOV_NAME_PATTERN.matcher(name).matches();
