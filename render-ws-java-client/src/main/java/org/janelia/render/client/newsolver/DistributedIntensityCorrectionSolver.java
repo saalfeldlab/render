@@ -8,6 +8,7 @@ import org.janelia.alignment.filter.CompositeFilter;
 import org.janelia.alignment.filter.Filter;
 import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.filter.LinearIntensityMap8BitFilter;
+import org.janelia.alignment.multisem.MultiSemUtilities;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -199,7 +200,7 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 			final ResolvedTileSpecCollection rtsc = finalizedItems.getResolvedTileSpecs();
 			final List<TileSpec> tileSpecs = new ArrayList<>(rtsc.getTileSpecs());
 			final Map<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.getModelMap();
-			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, solverSetup.intensityAdjust.numCoefficients);
+			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, solverSetup.intensityAdjust.numCoefficients, solverSetup.intensityAdjust.mfovSlope);
 			addFilters(rtsc, idToFilterSpec);
 			renderDataClient.saveResolvedTiles(rtsc, solverSetup.targetStack.stack, null);
 			if (solverSetup.targetStack.completeStack)
@@ -275,9 +276,10 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 	private static Map<String, FilterSpec> convertCoefficientsToFilter(
 			final List<TileSpec> tiles,
 			final Map<String, ArrayList<AffineModel1D>> coefficientTiles,
-			final int numCoefficients) {
+			final int numCoefficients,
+			final Double mfovSlope) {
 
-		final ArrayList<OnTheFlyIntensity> corrected = convertModelsToOtfIntensities(tiles, numCoefficients, coefficientTiles);
+		final ArrayList<OnTheFlyIntensity> corrected = convertModelsToOtfIntensities(tiles, numCoefficients, coefficientTiles, mfovSlope);
 
 		final Map<String, FilterSpec> idToFilterSpec = new HashMap<>();
 		for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
@@ -296,7 +298,12 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 	private static ArrayList<OnTheFlyIntensity> convertModelsToOtfIntensities(
 			final List<TileSpec> tiles,
 			final int numCoefficients,
-			final Map<String, ArrayList<AffineModel1D>> coefficientTiles) {
+			final Map<String, ArrayList<AffineModel1D>> coefficientTiles,
+			final Double mfovSlope) {
+
+		if (mfovSlope != null) {
+			LOG.info("convertModelsToOtfIntensities: adding MFOV ramp of {} gray levels from top to bottom", mfovSlope);
+		}
 
 		final ArrayList<OnTheFlyIntensity> correctedOnTheFly = new ArrayList<>();
 		for (final TileSpec tile : tiles) {
@@ -308,6 +315,15 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 			for (int i = 0; i < numCoefficients * numCoefficients; ++i) {
 				final Affine1D<?> affine = models.get(i);
 				affine.toArray(ab_coefficients[i]);
+			}
+
+			if (mfovSlope != null) {
+				// sub-tiles are row-major; ramp position y in [0, 1] over the 11 rows of the MFOV, centered at 0.5
+				final int mfovRow = MultiSemUtilities.getMfovRowForTileId(tile.getTileId());
+				for (int i = 0; i < numCoefficients * numCoefficients; ++i) {
+					final double y = (mfovRow + (i / numCoefficients + 0.5) / numCoefficients) / 11.0;
+					ab_coefficients[i][1] += mfovSlope / 255.0 * (0.5 - y);
+				}
 			}
 
 			correctedOnTheFly.add(new LinearOnTheFlyIntensity(tile, ab_coefficients, numCoefficients ));

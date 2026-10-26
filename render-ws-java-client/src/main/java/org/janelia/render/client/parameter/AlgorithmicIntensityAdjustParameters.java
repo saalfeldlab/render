@@ -128,6 +128,13 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	)
 	public Double mfovSeamScale = null;
 
+	@Parameter(
+			names = "--mfovSlope",
+			description = "Multi-SEM only: linear ramp (8-bit gray levels from MFOV top to bottom) added to the fitted " +
+					"intensity correction, centered so that the MFOV top gets +slope/2 and the bottom -slope/2. " +
+					"Default: no ramp."
+	)
+	public Double mfovSlope = null;
 
 
 	public void initDefaultValues() throws IllegalArgumentException {
