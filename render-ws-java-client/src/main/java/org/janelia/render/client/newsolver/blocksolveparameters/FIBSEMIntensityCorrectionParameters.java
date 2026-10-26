@@ -35,6 +35,9 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	private final boolean useRansacMatching;
 	private final boolean cacheRenderedTiles;
 	private final boolean tetherCrossLayers;
+	private final Double mfovSeamMatchWeight;
+	private final Double mfovSeamShift;
+	private final Double mfovSeamScale;
 
 
 	public FIBSEMIntensityCorrectionParameters(
@@ -60,7 +63,10 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			 intensityAdjust.maxPlateauWidth,
 			 intensityAdjust.useRansacMatching,
 			 intensityAdjust.cacheRenderedTiles,
-			 intensityAdjust.tetherCrossLayers);
+			 intensityAdjust.tetherCrossLayers,
+			 intensityAdjust.mfovSeamMatchWeight,
+			 intensityAdjust.mfovSeamShift,
+			 intensityAdjust.mfovSeamScale);
 	}
 
 	public FIBSEMIntensityCorrectionParameters(
@@ -82,7 +88,10 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			final int maxPlateauWidth,
 			final boolean useRansacMatching,
 			final boolean cacheRenderedTiles,
-			final boolean tetherCrossLayers) {
+			final boolean tetherCrossLayers,
+			final Double mfovSeamMatchWeight,
+			final Double mfovSeamShift,
+			final Double mfovSeamScale) {
 		// TODO: properly copy blockSolveModel
 		super(baseDataUrl, owner, project, stack, blockSolveModel);
 
@@ -100,6 +109,9 @@ public class FIBSEMIntensityCorrectionParameters<M>
 		this.useRansacMatching = useRansacMatching;
 		this.cacheRenderedTiles = cacheRenderedTiles;
 		this.tetherCrossLayers = tetherCrossLayers;
+		this.mfovSeamMatchWeight = mfovSeamMatchWeight;
+		this.mfovSeamShift = mfovSeamShift;
+		this.mfovSeamScale = mfovSeamScale;
 	}
 
 	public long maxPixelCacheGb() { return maxPixelCacheGb; }
@@ -116,6 +128,9 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	public boolean useRansacMatching() { return useRansacMatching; }
 	public boolean cacheRenderedTiles() { return cacheRenderedTiles; }
 	public boolean tetherCrossLayers() { return tetherCrossLayers; }
+	public Double mfovSeamMatchWeight() { return mfovSeamMatchWeight; }
+	public Double mfovSeamShift() { return mfovSeamShift; }
+	public Double mfovSeamScale() { return mfovSeamScale; }
 
 	@Override
 	public Worker<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(

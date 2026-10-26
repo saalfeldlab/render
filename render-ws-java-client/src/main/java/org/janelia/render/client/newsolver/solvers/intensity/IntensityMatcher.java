@@ -14,6 +14,7 @@ import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 
+import org.janelia.alignment.multisem.MultiSemUtilities;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.slf4j.Logger;
@@ -39,6 +40,11 @@ class IntensityMatcher {
 	final private int numCoefficients;
 	final private TileRenderer sameLayerRenderer;
 	final private TileRenderer crossLayerRenderer;
+	// matches across top/bottom MFOV seams (multi-SEM only, null = not set)
+	final private Double mfovSeamMatchWeight;
+	final private double mfovSeamShift;
+	final private double mfovSeamScale;
+	final private boolean handleMfovSeams;
 
 	public IntensityMatcher(
 			final MatchFilter sameLayerFilter,
@@ -50,6 +56,10 @@ class IntensityMatcher {
 		this.crossLayerFilter = crossLayerFilter;
 		this.numCoefficients = parameters.numCoefficients();
 		final boolean cacheRenderedTiles = parameters.cacheRenderedTiles();
+		this.mfovSeamMatchWeight = parameters.mfovSeamMatchWeight();
+		this.mfovSeamShift = (parameters.mfovSeamShift() == null) ? 0.0 : parameters.mfovSeamShift() / 255.0;
+		this.mfovSeamScale = (parameters.mfovSeamScale() == null) ? 1.0 : parameters.mfovSeamScale();
+		this.handleMfovSeams = (mfovSeamMatchWeight != null) || (mfovSeamShift != 0.0) || (mfovSeamScale != 1.0);
 
 		final double sameLayerScale = parameters.renderScale();
 		this.sameLayerRenderer = createRenderer(sameLayerScale, meshResolution, maximumCachedKilobytes, cacheRenderedTiles);
@@ -87,6 +97,11 @@ class IntensityMatcher {
 		final boolean crossLayer = (p1.zDistanceFrom(p2) != 0);
 		final TileRenderer renderer = crossLayer ? crossLayerRenderer : sameLayerRenderer;
 		final MatchFilter filter = crossLayer ? crossLayerFilter : sameLayerFilter;
+		final int topOfSeam = (handleMfovSeams && ! crossLayer) ? topTileOfMfovSeam(p1, p2) : 0;
+		if (topOfSeam != 0 && mfovSeamMatchWeight != null && mfovSeamMatchWeight == 0.0) {
+			LOG.debug("match: skipping MFOV seam pair {} <-> {}", p1.getTileId(), p2.getTileId());
+			return;
+		}
 		final Rectangle box = computeIntersection(p1, p2);
 
 		// Both tiles are rendered for the same region by the same renderer, so the two sets of rasters
@@ -112,8 +127,13 @@ class IntensityMatcher {
 			final int label2 = label2Cursor.next().get();
 			final float weight1 = weight1Cursor.next().get();
 			final float weight2 = weight2Cursor.next().get();
-			final float p = pixel1Cursor.next().get();
-			final float q = pixel2Cursor.next().get();
+			float p = pixel1Cursor.next().get();
+			float q = pixel2Cursor.next().get();
+			if (topOfSeam == 1) {
+				p = (float) (p * mfovSeamScale + mfovSeamShift);
+			} else if (topOfSeam == 2) {
+				q = (float) (q * mfovSeamScale + mfovSeamShift);
+			}
 
 			if (label1 > 0 && label2 > 0 && weight1 > 0 && weight2 > 0) {
 				// First sub-tile label is 1 -> adjust to 0-based indexing
@@ -136,6 +156,9 @@ class IntensityMatcher {
             } catch (final IOException e) {
                 throw new RuntimeException("failed to filter coefficients for pair " + p1 + " (z " + p1.getZ() + "), " +
                                            p2 + " (z " + p2.getZ() + ") in " + renderStack, e);
+            }
+            if (topOfSeam != 0 && mfovSeamMatchWeight != null) {
+                filteredMatchesForPair.replaceAll(m -> new PointMatch(m.getP1(), m.getP2(), mfovSeamMatchWeight));
             }
             filteredMatches.add(filteredMatchesForPair);
 		}
@@ -165,6 +188,26 @@ class IntensityMatcher {
 
 		stopWatch.stop();
 		LOG.debug("match: pair {} <-> {} has {} connections, matching took {}", p1.getTileId(), p2.getTileId(), connectionCount, stopWatch);
+	}
+
+	/**
+	 * @return 1 or 2 if the tiles are from different MFOVs and p1 or p2, respectively, is in the top rows (0-1) of
+	 *         its MFOV while the other one is in the bottom rows (9-10) of its MFOV; 0 otherwise.
+	 */
+	static int topTileOfMfovSeam(final TileSpec p1, final TileSpec p2) {
+		final String id1 = p1.getTileId();
+		final String id2 = p2.getTileId();
+		if (MultiSemUtilities.getMagcMfovForTileId(id1).equals(MultiSemUtilities.getMagcMfovForTileId(id2))) {
+			return 0;
+		}
+		final int row1 = MultiSemUtilities.getMfovRowForTileId(id1);
+		final int row2 = MultiSemUtilities.getMfovRowForTileId(id2);
+		if (row1 <= 1 && row2 >= 9) {
+			return 1;
+		} else if (row2 <= 1 && row1 >= 9) {
+			return 2;
+		}
+		return 0;
 	}
 
 	private static List<FlatIntensityMatches> getPairwiseCoefficients(

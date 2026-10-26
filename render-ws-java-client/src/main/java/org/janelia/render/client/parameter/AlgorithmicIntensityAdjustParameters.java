@@ -105,6 +105,30 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	)
 	public boolean tetherCrossLayers = false;
 
+	@Parameter(
+			names = "--mfovSeamMatchWeight",
+			description = "Multi-SEM only: weight of in-layer matches across the top/bottom seam of two MFOVs " +
+					"(top rows 0-1 of one MFOV against bottom rows 9-10 of another), where the tissue is exposed twice. " +
+					"A weight of 0 drops these matches. Default: matches are weighted like all others."
+	)
+	public Double mfovSeamMatchWeight = null;
+
+	@Parameter(
+			names = "--mfovSeamShift",
+			description = "Multi-SEM only: additive constant (8-bit gray levels) applied to the intensities of the " +
+					"top-of-MFOV tile when matching across a top/bottom MFOV seam (applied after --mfovSeamScale). " +
+					"Default: no shift."
+	)
+	public Double mfovSeamShift = null;
+
+	@Parameter(
+			names = "--mfovSeamScale",
+			description = "Multi-SEM only: multiplicative constant applied to the intensities of the top-of-MFOV tile " +
+					"when matching across a top/bottom MFOV seam. Default: no scaling."
+	)
+	public Double mfovSeamScale = null;
+
+
 
 	public void initDefaultValues() throws IllegalArgumentException {
 		this.zDistance.initDefaultValues();
