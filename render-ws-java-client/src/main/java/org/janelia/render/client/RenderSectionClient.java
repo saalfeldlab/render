@@ -150,6 +150,11 @@ public class RenderSectionClient {
                 arity = 0)
         public boolean convertToGray = false;
 
+        @Parameter(
+                names = "--numberOfThreads",
+                description = "Number of threads to use for rendering each section")
+        public int numberOfThreads = 1;
+
     }
 
     /**
@@ -289,6 +294,7 @@ public class RenderSectionClient {
         renderParameters.setDoFilter(clientParameters.doFilter);
         renderParameters.setChannels(clientParameters.channels);
         renderParameters.setConvertToGray(clientParameters.convertToGray);
+        renderParameters.setNumberOfThreads(clientParameters.numberOfThreads);
 
         final File sectionFile = getSectionFile(z);
 
