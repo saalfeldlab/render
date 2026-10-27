@@ -7,6 +7,7 @@ import java.io.Serializable;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TileSpecComparatorUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +23,7 @@ public class ByteBoxRenderer
     private final Double minIntensity;
     private final Double maxIntensity;
     private final boolean exportMaskOnly;
+    private final boolean reverseMfovRenderOrder;
 
     public ByteBoxRenderer(final String baseUrl,
                            final String owner,
@@ -33,11 +35,31 @@ public class ByteBoxRenderer
                            final Double minIntensity,
                            final Double maxIntensity,
                            final boolean exportMaskOnly) {
+        this(baseUrl, owner, project, stack, width, height, scale, minIntensity, maxIntensity, exportMaskOnly, false);
+    }
+
+    /**
+     * @param  reverseMfovRenderOrder  if true, render multi-SEM tiles so that MFOVs are drawn in
+     *                                 reverse order of their MFOV number instead of in tileId order
+     *                                 (see {@link TileSpecComparatorUtil#REVERSE_MFOV_COMPARATOR}).
+     */
+    public ByteBoxRenderer(final String baseUrl,
+                           final String owner,
+                           final String project,
+                           final String stack,
+                           final long width,
+                           final long height,
+                           final double scale,
+                           final Double minIntensity,
+                           final Double maxIntensity,
+                           final boolean exportMaskOnly,
+                           final boolean reverseMfovRenderOrder) {
         this.stackUrl = String.format("%s/owner/%s/project/%s/stack/%s", baseUrl, owner, project, stack);
         this.boxUrlSuffix = String.format("%d,%d,%f/render-parameters", width, height, scale);
         this.minIntensity = minIntensity;
         this.maxIntensity = maxIntensity;
         this.exportMaskOnly = exportMaskOnly;
+        this.reverseMfovRenderOrder = reverseMfovRenderOrder;
     }
 
     public ByteProcessor render(final long x,
@@ -56,6 +78,10 @@ public class ByteBoxRenderer
 
         final ByteProcessor renderedProcessor;
         if (renderParameters.numberOfTileSpecs() > 0) {
+            // the web service returns tiles in tileId order, and tiles are drawn in list order
+            if (reverseMfovRenderOrder) {
+                renderParameters.sortTileSpecs(TileSpecComparatorUtil.REVERSE_MFOV_COMPARATOR);
+            }
             if (exportMaskOnly) {
                 for (final TileSpec tileSpec : renderParameters.getTileSpecs()) {
                     tileSpec.replaceFirstChannelImageWithMask(true);

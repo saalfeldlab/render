@@ -2,6 +2,8 @@ package org.janelia.alignment.spec;
 
 import java.util.Comparator;
 
+import org.janelia.alignment.multisem.MultiSemUtilities;
+
 /**
  * Utilities for working with TileSpec Comparator instances.
  */
@@ -13,7 +15,8 @@ public class TileSpecComparatorUtil {
     public enum Order {
         ASCENDING_TILE_ID_ORDER(  ASCENDING_TILE_ID_COMPARATOR  ),
         DESCENDING_TILE_ID_ORDER( DESCENDING_TILE_ID_COMPARATOR ),
-        CLUSTER_GROUP_ID_ORDER(   CLUSTER_GROUP_ID_COMPARATOR   );
+        CLUSTER_GROUP_ID_ORDER(   CLUSTER_GROUP_ID_COMPARATOR   ),
+        REVERSE_MFOV_ORDER(       REVERSE_MFOV_COMPARATOR       );
 
         private final Comparator<TileSpec> comparator;
 
@@ -63,5 +66,20 @@ public class TileSpecComparatorUtil {
         }
         return result;
     };
+
+    /**
+     * Order multi-SEM tile specs by MFOV number descending and tileId ascending,
+     * e.g. all m0038 tiles before all m0033 tiles.
+     * <br/>
+     * Tiles are drawn in list order, so lower numbered MFOVs end up "on top" where MFOVs overlap.
+     * Tiles within an MFOV stay in tileId order, which keeps the SFOV render order set by
+     * {@link MultiSemUtilities#convertTileIdToUseWafers6061RenderOrder}.
+     * <br/>
+     * Comparisons throw an IllegalArgumentException if an MFOV number cannot be derived from a tileId.
+     */
+    public static final Comparator<TileSpec> REVERSE_MFOV_COMPARATOR =
+            Comparator.comparingInt((TileSpec tileSpec) -> MultiSemUtilities.getMfovNumberForTileId(tileSpec.getTileId()))
+                    .reversed()
+                    .thenComparing(ASCENDING_TILE_ID_COMPARATOR);
 
 }

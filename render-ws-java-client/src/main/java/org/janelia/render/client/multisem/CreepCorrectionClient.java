@@ -29,7 +29,9 @@ import org.slf4j.LoggerFactory;
 
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
+import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.NotEnoughDataPointsException;
+import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
 /**
@@ -49,19 +51,18 @@ public class CreepCorrectionClient {
     private static final double TAU_1 = 4.0;       // seconds
     private static final double PIXEL_DWELL = 800e-9; // seconds
     private static final double LINE_WIDTH = 2000;  // pixels
-    private static final double L0 = TAU_0 / (PIXEL_DWELL * LINE_WIDTH);  // 262500 lines
-    private static final double L1 = TAU_1 / (PIXEL_DWELL * LINE_WIDTH);  // 2500000 lines
+    private static final double L0 = TAU_0 / (PIXEL_DWELL * LINE_WIDTH);  // 262.5 lines
+    private static final double L1 = TAU_1 / (PIXEL_DWELL * LINE_WIDTH);  // 2500 lines
 
     // line numbers used for stretch-to-amplitude conversion
     private static final int TOP_LINE = 50;
     private static final int BOTTOM_LINE = 1700;
 
     // validation thresholds
-    private static final double MIN_STRETCH = 0.9;
-    private static final double MAX_STRETCH = 1.1;
     private static final int MIN_VALID_STRETCHES = 10;
     private static final double MAX_STRETCH_STDDEV = 0.02;
-    private static final double MIN_MEDIAN_STRETCH = 0.995;
+    private static final double MIN_MEDIAN_STRETCH = 0.9;
+    private static final double MAX_MEDIAN_STRETCH = 0.995;
 
     // RANSAC parameters for pairwise affine estimation
     private static final int RANSAC_ITERATIONS = 1000;
@@ -168,7 +169,7 @@ public class CreepCorrectionClient {
         final List<Double> stretches = new ArrayList<>();
         int pairsWithoutMatches = 0;
         for (final TilePair pair : neighborPairs) {
-            final String key = pairKey(pair.pTileId, pair.qTileId);
+            final String key = pairKey(pair.upperTileId, pair.lowerTileId);
             final CanvasMatches matches = pairKeyToMatches.get(key);
 
             if (matches == null) {
@@ -176,8 +177,13 @@ public class CreepCorrectionClient {
                 continue;
             }
 
-            final double yStretch = estimateYStretchForPair(
-                    CanvasMatchResult.convertMatchesToPointMatchList(matches.getMatches()));
+            // matches are stored in tile ID order, but the stretch must be estimated from the upper to the lower tile
+            List<PointMatch> pointMatches = CanvasMatchResult.convertMatchesToPointMatchList(matches.getMatches());
+            if (! matches.getpId().equals(pair.upperTileId)) {
+                pointMatches = new ArrayList<>(PointMatch.flip(pointMatches));
+            }
+
+            final double yStretch = estimateYStretchForPair(pointMatches);
             stretches.add(yStretch);
         }
 
@@ -187,16 +193,38 @@ public class CreepCorrectionClient {
         }
 
         // validate and build result
-        final MfovResult result = validateStretches(stretches, mfov);
+        MfovResult result = validateStretches(stretches, mfov);
 
         if (result.isValid) {
             final Set<String> mfovTileIds = mfovTiles.stream()
                     .map(TileSpec::getTileId)
                     .collect(Collectors.toSet());
+
+            // match coordinates are relative to the min corner of each tile's normalized bounds,
+            // so capture that corner before the correction moves it for use when the matches are transformed
+            final Map<String, double[]> tileIdToMatchFrameOrigin = new HashMap<>();
+            for (final String tileId : mfovTileIds) {
+                tileIdToMatchFrameOrigin.put(tileId, getNormalizedMin(resolvedTiles.getTileSpec(tileId)));
+            }
+
             applyCorrectionToMFOV(resolvedTiles, mfovTileIds, result.correctionSpec);
+
+            result = result.withMatchFrameOrigin(tileIdToMatchFrameOrigin);
         }
 
         return result;
+    }
+
+    /**
+     * Uses the same normalization as the render web service's normalizeForMatching handling to find the
+     * min corner of the tile's bounds in the space where its point match coordinates are defined.
+     *
+     * @return the [minX, minY] of the specified tile's bounds after normalizing it for matching.
+     */
+    static double[] getNormalizedMin(final TileSpec tileSpec) {
+        final TileSpec normalizedTileSpec = tileSpec.slowClone();
+        normalizedTileSpec.normalizeForMatching();
+        return new double[] { normalizedTileSpec.getMinX(), normalizedTileSpec.getMinY() };
     }
 
     /**
@@ -264,16 +292,21 @@ public class CreepCorrectionClient {
         }
 
         if (closestId != null) {
-            // normalize pair ordering so pairKey lookups work regardless of match storage order
-            final String pId = targetTileId.compareTo(closestId) < 0 ? targetTileId : closestId;
-            final String qId = targetTileId.compareTo(closestId) < 0 ? closestId : targetTileId;
-            return java.util.Optional.of(new TilePair(pId, qId));
+            return java.util.Optional.of(new TilePair(targetTileId, closestId));
         }
         return java.util.Optional.empty();
     }
 
     /**
      * Estimates the y-stretch factor from a set of point matches by fitting an affine model with RANSAC.
+     * <br/><br/>
+     * A least-squares fit treats the source points as exact, so noise in the source points
+     * biases the fitted y-stretch toward 0.  The bias is large when the matches span only a small
+     * range in y, as in a tile overlap.  The bias of the inverse fit is in the opposite direction,
+     * so the geometric mean of the forward y-stretch and the inverse of the backward y-stretch cancels it
+     * to first order.  Both fits use the same RANSAC inliers.
+     *
+     * @param  candidates  point matches from the upper tile (p) to the lower tile (q).
      *
      * @return the y-stretch (m11 element of the affine), or {@link Double#NaN} on failure
      */
@@ -285,31 +318,49 @@ public class CreepCorrectionClient {
         final AffineModel2D model = new AffineModel2D();
         final List<PointMatch> inliers = new ArrayList<>();
 
+        // if filtering leaves too few inliers, filterRansac returns false but keeps the RANSAC model
+        // and the trimmed inliers, so the forward and inverse fits would use different matches
         try {
-            model.filterRansac(candidates,
-                               inliers,
-                               RANSAC_ITERATIONS,
-                               RANSAC_MAX_EPSILON,
-                               RANSAC_MIN_INLIER_RATIO,
-                               RANSAC_MIN_NUM_INLIERS,
-                               RANSAC_MAX_TRUST);
+            if (!model.filterRansac(candidates,
+                                    inliers,
+                                    RANSAC_ITERATIONS,
+                                    RANSAC_MAX_EPSILON,
+                                    RANSAC_MIN_INLIER_RATIO,
+                                    RANSAC_MIN_NUM_INLIERS,
+                                    RANSAC_MAX_TRUST)) {
+                return Double.NaN;
+            }
         } catch (final NotEnoughDataPointsException e) {
             return Double.NaN;
         }
 
-        if (inliers.isEmpty()) {
+        // build the flipped matches from local coordinates, because RANSAC has set the world
+        // coordinates of the p points to their transformed positions and fit uses them for targets
+        final List<PointMatch> flippedInliers = new ArrayList<>(inliers.size());
+        for (final PointMatch pm : inliers) {
+            flippedInliers.add(new PointMatch(new Point(pm.getP2().getL().clone()),
+                                              new Point(pm.getP1().getL().clone()),
+                                              pm.getWeight()));
+        }
+
+        final AffineModel2D inverseModel = new AffineModel2D();
+        try {
+            inverseModel.fit(flippedInliers);
+        } catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
             return Double.NaN;
         }
 
+        // affineData layout: [m00, m10, m01, m11, m02, m12], m11 = y-stretch
         final double[] affineData = new double[6];
+        final double[] inverseAffineData = new double[6];
         model.toArray(affineData);
-        // affineData layout: [m00, m10, m01, m11, m02, m12]
-        return affineData[3]; // m11 = y-stretch
+        inverseModel.toArray(inverseAffineData);
+        return Math.sqrt(affineData[3] / inverseAffineData[3]);
     }
 
     /**
      * Computes the creep correction amplitude from the median y-stretch.
-     * Returns a negative value (same sign as the Python prototype's {@code calculate_a_helper_func}),
+     * Returns a positive value for stretches below 1 (e.g. about 3 for a stretch of 0.99),
      * which is used directly as the coefficient in {@link StageCreepCorrectionTransform}'s backward map:
      * {@code y_source = y_world + a * exp(-y_world / L)}.
      */
@@ -331,15 +382,12 @@ public class CreepCorrectionClient {
             return MfovResult.invalid(mfov, 0, "no stretch estimates available");
         }
 
-        // filter out NaN and out-of-range values
+        // filter out NaN values
         final List<Double> validStretches = new ArrayList<>();
         int nanCount = 0;
-        int outOfRangeCount = 0;
         for (final double s : stretches) {
             if (Double.isNaN(s)) {
                 nanCount++;
-            } else if (s < MIN_STRETCH || s > MAX_STRETCH) {
-                outOfRangeCount++;
             } else {
                 validStretches.add(s);
             }
@@ -348,7 +396,7 @@ public class CreepCorrectionClient {
         if (validStretches.size() < MIN_VALID_STRETCHES) {
             return MfovResult.invalid(mfov, totalPairs,
                     "only " + validStretches.size() + " valid stretches (need " + MIN_VALID_STRETCHES +
-                    ") nanCount=" + nanCount + " outOfRange=" + outOfRangeCount);
+                    ") nanCount=" + nanCount);
         }
 
         // compute median
@@ -361,12 +409,16 @@ public class CreepCorrectionClient {
             medianStretch = validStretches.get(n / 2);
         }
 
-        // compute standard deviation
-        final double mean = validStretches.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-        final double variance = validStretches.stream()
-                .mapToDouble(s -> Math.pow(s - mean, 2))
-                .sum() / validStretches.size();
-        final double stddev = Math.sqrt(variance);
+        // estimate the standard deviation robustly as 1.4826 * MAD (exact for normally distributed values),
+        // since individual stretches are not range checked and a single wild pair would inflate a plain stddev
+        final double[] absoluteDeviations = validStretches.stream()
+                .mapToDouble(s -> Math.abs(s - medianStretch))
+                .sorted()
+                .toArray();
+        final double mad = (n % 2 == 0)
+                ? (absoluteDeviations[n / 2 - 1] + absoluteDeviations[n / 2]) / 2.0
+                : absoluteDeviations[n / 2];
+        final double stddev = 1.4826 * mad;
 
         if (stddev > MAX_STRETCH_STDDEV) {
             return new MfovResult(mfov, medianStretch, stddev, Double.NaN,
@@ -374,10 +426,11 @@ public class CreepCorrectionClient {
                                   "stretch stddev exceeds threshold " + MAX_STRETCH_STDDEV);
         }
 
-        if (medianStretch > MIN_MEDIAN_STRETCH) {
+        if (medianStretch < MIN_MEDIAN_STRETCH || medianStretch > MAX_MEDIAN_STRETCH) {
             return new MfovResult(mfov, medianStretch, stddev, Double.NaN,
                                   validStretches.size(), totalPairs, null,
-                                  "median stretch " + medianStretch + " above threshold " + MIN_MEDIAN_STRETCH);
+                                  "median stretch " + medianStretch + " outside [" + MIN_MEDIAN_STRETCH + ", " +
+                                  MAX_MEDIAN_STRETCH + "]");
         }
 
         // compute amplitude
@@ -395,9 +448,8 @@ public class CreepCorrectionClient {
 
     /**
      * Builds a {@link LeafTransformSpec} for the creep correction using {@code StageCreepCorrectionTransform}.
-     * The amplitude is negative (same as the Python prototype), defining the backward map
-     * {@code y_s = y_w + a*exp(-y_w/L0) + a*exp(-y_w/L1)} where negative {@code a} reads from above,
-     * compressing the top of the image to correct for creep stretch.
+     * The amplitude defines the backward map {@code y_s = y_w + a*exp(-y_w/L0) + a*exp(-y_w/L1)},
+     * where positive {@code a} stretches the top of the image to correct for creep compression.
      */
     static TransformSpec buildCorrectionTransformSpec(final double amplitude) {
         final String dataString = amplitude + "," + L0 + "," + amplitude + "," + L1 + ",1";
@@ -425,8 +477,14 @@ public class CreepCorrectionClient {
     }
 
     /**
-     * Transforms all matches for a given group (section) using the collected creep corrections.
+     * Transforms all matches with the specified pGroupId using the collected creep corrections.
      * Handles both within-group and outside-group matches.
+     * <br/><br/>
+     * Outside-group matches are only transformed when their pGroupId is the specified group.
+     * The outside-group query also returns matches where the specified group is the qGroupId,
+     * but those are transformed when their own pGroupId is processed.
+     * This ensures that each match is transformed exactly once when the groups are processed
+     * in parallel and the source and target match collections are the same.
      *
      * @param  allResults  creep correction results keyed by group (section) id, not z.
      */
@@ -443,7 +501,14 @@ public class CreepCorrectionClient {
         final List<CanvasMatches> outsideMatches = sourceMatchClient.getMatchesOutsideGroup(groupId, false);
 
         final List<CanvasMatches> allMatches = new ArrayList<>(withinMatches);
-        allMatches.addAll(outsideMatches);
+        for (final CanvasMatches cm : outsideMatches) {
+            if (groupId.equals(cm.getpGroupId())) {
+                allMatches.add(cm);
+            }
+        }
+
+        LOG.info("transformMatchesForGroup: groupId={} has {} within-group matches and {} of {} outside-group matches with it as the pGroupId",
+                 groupId, withinMatches.size(), allMatches.size() - withinMatches.size(), outsideMatches.size());
 
         if (allMatches.isEmpty()) {
             LOG.info("transformMatchesForGroup: no matches found for groupId={}", groupId);
@@ -489,39 +554,57 @@ public class CreepCorrectionClient {
 
     /**
      * Transforms match coordinates in place by applying creep correction.
-     * Match coordinates are in post-lens/pre-alignment space (montage matches are derived before
-     * alignment), which is the same space where the CC transform operates (it is inserted
-     * before the alignment transform). So we apply CC directly without touching alignment.
+     * <br/><br/>
+     * Match coordinates are in the space of the tile after it is normalized for matching.
+     * This space includes all transforms except the last (alignment) transform.
+     * The CC transform operates in this space, because it is inserted before the alignment transform.
+     * <br/><br/>
+     * Match coordinates are relative to the match frame origin of the tile.
+     * The match frame origin is the min corner of the normalized tile bounds before the correction.
+     * The CC transform varies with y, so it needs absolute coordinates.
+     * Thus, this method adds the match frame origin, applies the CC transform,
+     * and then subtracts the same match frame origin.
+     * <br/><br/>
+     * The CC transform also moves the min corner of the normalized tile bounds.
+     * The amount depends on the amplitude of the mFOV.
+     * Do not subtract the moved min corner: solvers apply the alignment transform directly
+     * to match coordinates and ignore the min corner, so each corrected mFOV would be offset.
      */
     static void transformMatchCoordinates(final double[][] coords,
                                           final String tileId,
                                           final String groupId,
                                           final Map<String, List<MfovResult>> allResults) {
 
-        // look up CC spec for this tile's mFOV
+        // look up CC result for this tile's mFOV
         final String mfov = MultiSemUtilities.getMagcMfovForTileId(tileId);
         final List<MfovResult> layerResults = allResults.get(groupId);
         if (layerResults == null) {
             return;
         }
 
-        TransformSpec ccSpec = null;
+        MfovResult ccResult = null;
         for (final MfovResult r : layerResults) {
             if (r.mfov.equals(mfov) && r.correctionSpec != null) {
-                ccSpec = r.correctionSpec;
+                ccResult = r;
                 break;
             }
         }
-        if (ccSpec == null) {
+        if (ccResult == null) {
             return;
         }
 
-        final CoordinateTransform ccTransform = ccSpec.getNewInstance();
+        final double[] origin = ccResult.tileIdToMatchFrameOrigin.get(tileId);
+        if (origin == null) {
+            throw new IllegalStateException("no match frame origin found for tile " + tileId +
+                                            " in corrected mFOV " + mfov + " of group " + groupId);
+        }
+
+        final CoordinateTransform ccTransform = ccResult.correctionSpec.getNewInstance();
         for (int i = 0; i < coords[0].length; i++) {
-            final double[] point = new double[] { coords[0][i], coords[1][i] };
+            final double[] point = new double[] { coords[0][i] + origin[0], coords[1][i] + origin[1] };
             ccTransform.applyInPlace(point);
-            coords[0][i] = point[0];
-            coords[1][i] = point[1];
+            coords[0][i] = point[0] - origin[0];
+            coords[1][i] = point[1] - origin[1];
         }
     }
 
@@ -540,6 +623,9 @@ public class CreepCorrectionClient {
         public final String diagnosticMessage;
         public final TransformSpec correctionSpec;
 
+        /** [minX, minY] match frame origin for each corrected tile in the mFOV (empty if the mFOV was not corrected) */
+        public final Map<String, double[]> tileIdToMatchFrameOrigin;
+
         MfovResult(final String mfov,
                    final double medianStretch,
                    final double stddev,
@@ -548,6 +634,19 @@ public class CreepCorrectionClient {
                    final int totalPairs,
                    final TransformSpec correctionSpec,
                    final String diagnosticMessage) {
+            this(mfov, medianStretch, stddev, amplitude, validPairs, totalPairs, correctionSpec, diagnosticMessage,
+                 new HashMap<>());
+        }
+
+        private MfovResult(final String mfov,
+                           final double medianStretch,
+                           final double stddev,
+                           final double amplitude,
+                           final int validPairs,
+                           final int totalPairs,
+                           final TransformSpec correctionSpec,
+                           final String diagnosticMessage,
+                           final HashMap<String, double[]> tileIdToMatchFrameOrigin) {
             this.mfov = mfov;
             this.medianStretch = medianStretch;
             this.stddev = stddev;
@@ -557,10 +656,17 @@ public class CreepCorrectionClient {
             this.isValid = correctionSpec != null;
             this.diagnosticMessage = diagnosticMessage;
             this.correctionSpec = correctionSpec;
+            this.tileIdToMatchFrameOrigin = tileIdToMatchFrameOrigin;
         }
 
         static MfovResult invalid(final String mfov, final int totalPairs, final String reason) {
             return new MfovResult(mfov, Double.NaN, Double.NaN, Double.NaN, 0, totalPairs, null, reason);
+        }
+
+        /** @return a copy of this result with the specified match frame origins for its corrected tiles. */
+        MfovResult withMatchFrameOrigin(final Map<String, double[]> tileIdToMatchFrameOrigin) {
+            return new MfovResult(mfov, medianStretch, stddev, amplitude, validPairs, totalPairs, correctionSpec,
+                                  diagnosticMessage, new HashMap<>(tileIdToMatchFrameOrigin));
         }
 
         public String toCsvRow() {
@@ -569,14 +675,14 @@ public class CreepCorrectionClient {
         }
     }
 
-    /** A pair of tile IDs representing geometrically adjacent sFOVs. */
+    /** A pair of tile IDs representing geometrically adjacent sFOVs, where the second tile is below the first. */
     static class TilePair {
-        final String pTileId;
-        final String qTileId;
+        final String upperTileId;
+        final String lowerTileId;
 
-        TilePair(final String pTileId, final String qTileId) {
-            this.pTileId = pTileId;
-            this.qTileId = qTileId;
+        TilePair(final String upperTileId, final String lowerTileId) {
+            this.upperTileId = upperTileId;
+            this.lowerTileId = lowerTileId;
         }
     }
 

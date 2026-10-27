@@ -171,6 +171,77 @@ public class TileSpecTest {
                  iterations, sloppyTime, meshTime);
     }
 
+    @Test
+    public void testNormalizeForMatching() {
+
+        // unlabelled: remove last (alignment) transform and then keep only the first 2 remaining transforms
+        validateNormalizeForMatching("unlabelled",
+                                     "[" + translation(5, 7) + "," + translation(0, -3) + "," +
+                                     translation(100, 200) + "," + translation(1000, 2000) + "]",
+                                     new String[] { "5 7", "0 -3" },
+                                     5, 4);
+
+        // unlabelled nested list: flatten before removing transforms
+        validateNormalizeForMatching("unlabelled nested",
+                                     "[{\"type\": \"list\", \"specList\": [" +
+                                     translation(5, 7) + "," + translation(0, -3) + "]}," +
+                                     translation(1000, 2000) + "]",
+                                     new String[] { "5 7", "0 -3" },
+                                     5, 4);
+
+        // lens label: remove all transforms after the last labelled transform
+        validateNormalizeForMatching("lens labelled",
+                                     "[" + labelledTranslation(5, 7, TransformSpecMetaData.LENS_CORRECTION_LABEL) + "," +
+                                     translation(0, -3) + "," + translation(1000, 2000) + "]",
+                                     new String[] { "5 7" },
+                                     5, 7);
+
+        // include label after lens label: keep everything through the last labelled transform
+        validateNormalizeForMatching("include labelled",
+                                     "[" + labelledTranslation(5, 7, TransformSpecMetaData.LENS_CORRECTION_LABEL) + "," +
+                                     labelledTranslation(0, -3, TransformSpecMetaData.INCLUDE_LABEL) + "," +
+                                     translation(100, 200) + "," + translation(1000, 2000) + "]",
+                                     new String[] { "5 7", "0 -3" },
+                                     5, 4);
+    }
+
+    private void validateNormalizeForMatching(final String context,
+                                              final String specListJson,
+                                              final String[] expectedDataStrings,
+                                              final double expectedMinX,
+                                              final double expectedMinY) {
+
+        final TileSpec tileSpec = TileSpec.fromJson(
+                "{\"tileId\": \"" + EXPECTED_TILE_ID + "\", \"z\": 1.0, \"width\": 100.0, \"height\": 50.0, " +
+                "\"transforms\": {\"type\": \"list\", \"specList\": " + specListJson + "}}");
+
+        tileSpec.normalizeForMatching();
+
+        final ListTransformSpec transforms = tileSpec.getTransforms();
+        Assert.assertEquals(context + ": invalid number of normalized transforms",
+                            expectedDataStrings.length, transforms.size());
+        for (int i = 0; i < expectedDataStrings.length; i++) {
+            Assert.assertEquals(context + ": invalid normalized transform " + i,
+                                expectedDataStrings[i],
+                                ((LeafTransformSpec) transforms.getSpec(i)).getDataString());
+        }
+
+        Assert.assertEquals(context + ": incorrect minX", expectedMinX, tileSpec.getMinX(), MAX_DOUBLE_DELTA);
+        Assert.assertEquals(context + ": incorrect minY", expectedMinY, tileSpec.getMinY(), MAX_DOUBLE_DELTA);
+    }
+
+    private static String translation(final int x,
+                                      final int y) {
+        return "{\"className\": \"mpicbg.trakem2.transform.TranslationModel2D\", \"dataString\": \"" + x + " " + y + "\"}";
+    }
+
+    private static String labelledTranslation(final int x,
+                                              final int y,
+                                              final String label) {
+        return "{\"metaData\": {\"labels\": [\"" + label + "\"]}, " +
+               "\"className\": \"mpicbg.trakem2.transform.TranslationModel2D\", \"dataString\": \"" + x + " " + y + "\"}";
+    }
+
     @SuppressWarnings("SameParameterValue")
     private long getDerivationTime(final TileSpec tileSpec,
                                    final boolean sloppy,

@@ -8,7 +8,8 @@
 # The --exclude-pattern option skips any collections whose name (the dump file name without
 # .bson.gz) matches EXCLUDE_PATTERN.  Only the name is checked because the dump directories have
 # slab ranges in them (e.g. s070_to_s079_r0n) that would match patterns meant for single slabs.
-# Example EXCLUDE_PATTERNs are: 'match', '__tile$', 'w60.*transform', '_s07[5-9]_'
+# EXCLUDE_PATTERN is an extended regular expression, so '|' can be used to combine patterns.
+# Example EXCLUDE_PATTERNs are: 'match', '__tile$', 'w60.*transform', '_s07[5-9]_', 'r00|s07[1-4]'
 #
 # Excluded render stacks are also removed from the admin__stack_meta_data collection after the
 # restore, since that one collection holds the metadata for every stack in the dump.
@@ -210,7 +211,9 @@ for DUMP_DIR in "${SELECTED[@]}"; do
 
     # skip collections excluded with --exclude-pattern
     COLLECTION_NAME=$(basename "${DUMP_FILE}" .bson.gz)
-    if [[ -n "$EXCLUDE_PATTERN" ]] && echo "$COLLECTION_NAME" | grep -q "$EXCLUDE_PATTERN"; then
+    # -E so the pattern is read the same way as the mongosh RegExp used for the stack metadata cleanup below
+    # (e.g. 'r00|s07[1-4]' is an alternation, which basic grep would treat as a literal '|')
+    if [[ -n "$EXCLUDE_PATTERN" ]] && echo "$COLLECTION_NAME" | grep -qE "$EXCLUDE_PATTERN"; then
       echo "skipping ${DUMP_FILE} since it matches exclude pattern '${EXCLUDE_PATTERN}'"
       continue
     fi
