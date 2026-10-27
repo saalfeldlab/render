@@ -409,12 +409,16 @@ public class CreepCorrectionClient {
             medianStretch = validStretches.get(n / 2);
         }
 
-        // compute standard deviation
-        final double mean = validStretches.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-        final double variance = validStretches.stream()
-                .mapToDouble(s -> Math.pow(s - mean, 2))
-                .sum() / validStretches.size();
-        final double stddev = Math.sqrt(variance);
+        // estimate the standard deviation robustly as 1.4826 * MAD (exact for normally distributed values),
+        // since individual stretches are not range checked and a single wild pair would inflate a plain stddev
+        final double[] absoluteDeviations = validStretches.stream()
+                .mapToDouble(s -> Math.abs(s - medianStretch))
+                .sorted()
+                .toArray();
+        final double mad = (n % 2 == 0)
+                ? (absoluteDeviations[n / 2 - 1] + absoluteDeviations[n / 2]) / 2.0
+                : absoluteDeviations[n / 2];
+        final double stddev = 1.4826 * mad;
 
         if (stddev > MAX_STRETCH_STDDEV) {
             return new MfovResult(mfov, medianStretch, stddev, Double.NaN,
