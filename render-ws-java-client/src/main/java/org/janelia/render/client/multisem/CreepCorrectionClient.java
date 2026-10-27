@@ -318,19 +318,19 @@ public class CreepCorrectionClient {
         final AffineModel2D model = new AffineModel2D();
         final List<PointMatch> inliers = new ArrayList<>();
 
+        // if filtering leaves too few inliers, filterRansac returns false but keeps the RANSAC model
+        // and the trimmed inliers, so the forward and inverse fits would use different matches
         try {
-            model.filterRansac(candidates,
-                               inliers,
-                               RANSAC_ITERATIONS,
-                               RANSAC_MAX_EPSILON,
-                               RANSAC_MIN_INLIER_RATIO,
-                               RANSAC_MIN_NUM_INLIERS,
-                               RANSAC_MAX_TRUST);
+            if (!model.filterRansac(candidates,
+                                    inliers,
+                                    RANSAC_ITERATIONS,
+                                    RANSAC_MAX_EPSILON,
+                                    RANSAC_MIN_INLIER_RATIO,
+                                    RANSAC_MIN_NUM_INLIERS,
+                                    RANSAC_MAX_TRUST)) {
+                return Double.NaN;
+            }
         } catch (final NotEnoughDataPointsException e) {
-            return Double.NaN;
-        }
-
-        if (inliers.isEmpty()) {
             return Double.NaN;
         }
 
