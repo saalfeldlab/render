@@ -148,6 +148,13 @@ public class N5Client {
                 description = "Export mask volume instead of pixel volume")
         public boolean exportMask = false;
 
+        @Parameter(
+                names = "--reverseMfovRenderOrder",
+                description = "Render multi-SEM tiles so that MFOVs are drawn in reverse order of their MFOV number " +
+                              "(e.g. m0038 tiles before m0033 tiles) instead of in tileId order.  " +
+                              "Tiles within an MFOV are still drawn in tileId order.")
+        public boolean reverseMfovRenderOrder = false;
+
         public Bounds getBoundsForRun(final Bounds defaultBounds,
                                       final ThicknessCorrectionData thicknessCorrectionData) {
             final Bounds defaultedLayerBounds = layerBounds.overrideBounds(defaultBounds);
@@ -421,7 +428,8 @@ public class N5Client {
                                                                 1.0,
                                                                 parameters.minIntensity,
                                                                 parameters.maxIntensity,
-                                                                parameters.exportMask);
+                                                                parameters.exportMask,
+                                                                parameters.reverseMfovRenderOrder);
 
         if (is2DVolume) {
             if (minZToRender != null) {

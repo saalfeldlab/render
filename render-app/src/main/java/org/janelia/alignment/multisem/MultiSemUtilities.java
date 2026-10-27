@@ -268,12 +268,27 @@ public class MultiSemUtilities {
     }
 
     /** @return true if the name is an 'm' followed by 4 digits like 'm0012', otherwise false. */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public static boolean isSimpleMFOVName(final String name) {
         return SIMPLE_MFOV_NAME_PATTERN.matcher(name).matches();
     }
 
     /** Each MFOV has 91 SFOVs or tiles */
     public static int NUMBER_OF_TILES_IN_MFOV = 91;
+
+    /**
+     * @return 33 for w61_magc0124_scan014_m0033_r80_s87
+     *
+     * @throws IllegalArgumentException
+     *   if an MFOV number cannot be derived from the tile id.
+     */
+    public static int getMfovNumberForTileId(final String tileId) throws IllegalArgumentException {
+        final String simpleMfov = getSimpleMfovForTileId(tileId);
+        if (! isSimpleMFOVName(simpleMfov)) {
+            throw new IllegalArgumentException("MFOV number cannot be derived from tileId " + tileId);
+        }
+        return Integer.parseInt(simpleMfov.substring(1));
+    }
 
     /**
      * @return the specified tileId with its render order updated
