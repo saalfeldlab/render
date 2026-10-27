@@ -59,11 +59,10 @@ public class CreepCorrectionClient {
     private static final int BOTTOM_LINE = 1700;
 
     // validation thresholds
-    private static final double MIN_STRETCH = 0.9;
-    private static final double MAX_STRETCH = 1.1;
     private static final int MIN_VALID_STRETCHES = 10;
     private static final double MAX_STRETCH_STDDEV = 0.02;
-    private static final double MIN_MEDIAN_STRETCH = 0.995;
+    private static final double MIN_MEDIAN_STRETCH = 0.9;
+    private static final double MAX_MEDIAN_STRETCH = 0.995;
 
     // RANSAC parameters for pairwise affine estimation
     private static final int RANSAC_ITERATIONS = 1000;
@@ -383,15 +382,12 @@ public class CreepCorrectionClient {
             return MfovResult.invalid(mfov, 0, "no stretch estimates available");
         }
 
-        // filter out NaN and out-of-range values
+        // filter out NaN values
         final List<Double> validStretches = new ArrayList<>();
         int nanCount = 0;
-        int outOfRangeCount = 0;
         for (final double s : stretches) {
             if (Double.isNaN(s)) {
                 nanCount++;
-            } else if (s < MIN_STRETCH || s > MAX_STRETCH) {
-                outOfRangeCount++;
             } else {
                 validStretches.add(s);
             }
@@ -400,7 +396,7 @@ public class CreepCorrectionClient {
         if (validStretches.size() < MIN_VALID_STRETCHES) {
             return MfovResult.invalid(mfov, totalPairs,
                     "only " + validStretches.size() + " valid stretches (need " + MIN_VALID_STRETCHES +
-                    ") nanCount=" + nanCount + " outOfRange=" + outOfRangeCount);
+                    ") nanCount=" + nanCount);
         }
 
         // compute median
@@ -426,10 +422,11 @@ public class CreepCorrectionClient {
                                   "stretch stddev exceeds threshold " + MAX_STRETCH_STDDEV);
         }
 
-        if (medianStretch > MIN_MEDIAN_STRETCH) {
+        if (medianStretch < MIN_MEDIAN_STRETCH || medianStretch > MAX_MEDIAN_STRETCH) {
             return new MfovResult(mfov, medianStretch, stddev, Double.NaN,
                                   validStretches.size(), totalPairs, null,
-                                  "median stretch " + medianStretch + " above threshold " + MIN_MEDIAN_STRETCH);
+                                  "median stretch " + medianStretch + " outside [" + MIN_MEDIAN_STRETCH + ", " +
+                                  MAX_MEDIAN_STRETCH + "]");
         }
 
         // compute amplitude
