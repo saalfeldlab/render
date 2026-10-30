@@ -102,7 +102,10 @@ public class RemoveMatchPairClient {
                                                                                             false);
         if (! crossLayerMatchPairs.isEmpty()) {
             for (final CanvasMatches matchPair : crossLayerMatchPairs) {
-                if (! matchPair.isPOffsetFromQ(matchRemoval.minCrossMatchPixelDistance)) {
+                // matchesOutsideGroup also returns pairs with pGroupId on the q side,
+                // so skip those here since they get checked when their own pGroupId is processed
+                if (pGroupId.equals(matchPair.getpGroupId()) &&
+                    (! matchPair.isPOffsetFromQ(matchRemoval.minCrossMatchPixelDistance))) {
                     pairsToRemove.add(new OrderedCanvasIdPair(matchPair.getpCanvasId(),
                                                               matchPair.getqCanvasId(),
                                                               null));
