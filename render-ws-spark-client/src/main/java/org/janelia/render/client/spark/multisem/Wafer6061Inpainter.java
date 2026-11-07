@@ -95,8 +95,8 @@ public class Wafer6061Inpainter
 	private static final int IDW_K = 8;
 	private static final double IDW_POWER = 2.0;
 
-	// Stacks are named w<wafer>_s<serial>_r<revision>_... (e.g. w61_s109_r00_gc_bc_par_cc_aso_3d_s3i); the serial is parsed from that.
-	private static final Pattern SERIAL_IN_NAME = Pattern.compile("_s(\\d+)");
+	// Stacks are named w<wafer>_s<serial>_r<revision>_... (e.g. w61_s109_r00_gc_bc_par_cc_aso_3d_s3i); the serial is parsed from the start of the name.
+	private static final Pattern SERIAL_IN_NAME = Pattern.compile("^w\\d+_s(\\d+)_");
 
 	// xlog field layout (consumed by loadPointCloud). The xlog is a zarr: its arrays are stored C-order, but the
 	// n5-zarr reader REVERSES the axis order, so the imglib2 axis indices below are the reverse of the C-order shape.
@@ -866,7 +866,8 @@ public class Wafer6061Inpainter
 		if (matcher.find()) {
 			return Long.parseLong(matcher.group(1));
 		}
-		throw new IllegalArgumentException("could not infer the serial from stack name '" + stack + "'");
+		throw new IllegalArgumentException("could not infer the serial from stack name '" + stack +
+										   "' because it does not start with w<wafer>_s<serial>_");
 	}
 
 	/** Maps a pixel level dataset (e.g. {@code <pixelGroup>/s2}) to its no paint dataset ({@code <noPaintGroup>/s2}). */
