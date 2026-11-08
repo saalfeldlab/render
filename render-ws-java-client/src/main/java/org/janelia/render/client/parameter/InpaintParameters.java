@@ -112,9 +112,18 @@ public class InpaintParameters
             throw new IllegalArgumentException("pixelDatasetSuffix and maskDatasetSuffix must differ");
         }
 
+        // Validate suffixes: collisions can cause no-paint data to overwrite mask or pixel datasets.
+        if (pixelDatasetSuffix.contains("/") || maskDatasetSuffix.contains("/")) {
+            throw new IllegalArgumentException("pixelDatasetSuffix and maskDatasetSuffix must not contain /");
+        }
+
         // an empty suffix would save the original blocks over the inpainted ones
         if ((noPaintDatasetSuffix == null) || noPaintDatasetSuffix.isEmpty() || noPaintDatasetSuffix.contains("/")) {
             throw new IllegalArgumentException("noPaintDatasetSuffix must be defined and must not contain /");
+        }
+
+        if (maskDatasetSuffix.equals(pixelDatasetSuffix + noPaintDatasetSuffix)) {
+            throw new IllegalArgumentException("maskDatasetSuffix must not equal pixelDatasetSuffix + noPaintDatasetSuffix");
         }
 
         if (! (maxRoiDistance > 0)) {
