@@ -4,7 +4,10 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.spark.SparkConf;
@@ -117,7 +120,8 @@ public class FilterReplacementClient
         filterReplacement.validate();
 
         final RenderDataClient ownerDataClient = new RenderDataClient(baseDataUrl, owner, "not_used");
-        final List<StackId> tileStackIds = ownerDataClient.getOwnerStacks().stream()
+        final List<StackId> ownerStackIds = ownerDataClient.getOwnerStacks();
+        final List<StackId> tileStackIds = ownerStackIds.stream()
                 .filter(stackId -> filterReplacement.isValidStack(stackId.getStack()))
                 .collect(Collectors.toList());
 
@@ -128,10 +132,21 @@ public class FilterReplacementClient
                                                filterReplacement.tileStackPattern + "'");
         }
 
-        // derive every filter and target stack before replacing anything so that
-        // a bad pattern or replacement fails before any work is done
+        // derive every filter and target stack and make sure every filter stack exists before
+        // replacing anything so that a bad pattern, replacement, or data load fails before any work is done
+        final Set<StackId> existingStackIds = new HashSet<>(ownerStackIds);
+        final List<String> missingFilterStacks = new ArrayList<>();
         for (final StackId tileStackId : tileStackIds) {
             filterReplacement.getTargetStackId(tileStackId); // also derives the filter stack
+            final StackId filterStackId = filterReplacement.getFilterStackId(tileStackId);
+            if (! existingStackIds.contains(filterStackId)) {
+                missingFilterStacks.add(filterStackId.toDevString() + " (for " + tileStackId.toDevString() + ")");
+            }
+        }
+
+        if (! missingFilterStacks.isEmpty()) {
+            throw new IllegalArgumentException(missingFilterStacks.size() + " of " + tileStackIds.size() +
+                                               " filter stack(s) do not exist: " + missingFilterStacks);
         }
 
         final int parallelism = Math.min(MFOVAsTileClient.MAX_PARTITIONS_FOR_ONE_WEB_SERVER,
