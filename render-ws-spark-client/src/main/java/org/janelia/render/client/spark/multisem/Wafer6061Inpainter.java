@@ -36,6 +36,7 @@ import org.janelia.alignment.multisem.MultiSemUtilities;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.util.Grid;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -178,9 +179,12 @@ public class Wafer6061Inpainter
 								final AlignmentPipelineParameters pipelineParameters)
 			throws IllegalArgumentException, IOException {
 
-		final MultiProjectParameters multiProject =
-				pipelineParameters.getMultiProject(pipelineParameters.getIntensityCorrectedNamingGroup());
+		final StackIdNamingGroup namingGroup = pipelineParameters.getIntensityCorrectedNamingGroup();
+		if (namingGroup == null) {
+			throw new IllegalArgumentException("pipelineStackGroups.intensityCorrected must be defined");
+		}
 
+		final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(namingGroup);
 		inpaintStacks(sparkContext, multiProject, pipelineParameters.getInpaint());
 	}
 
