@@ -1,18 +1,16 @@
 package org.janelia.render.client.spark.multisem;
 
 
-import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,17 +31,21 @@ import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.view.Views;
 
 import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.broadcast.Broadcast;
 import org.janelia.alignment.multisem.MultiSemUtilities;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.util.Grid;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.InpaintParameters;
+import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.LogUtilities;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
 import org.janelia.saalfeldlab.n5.DataBlock;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
@@ -57,35 +59,45 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * Spark client for filling holes in the tissue of wafer 60/61 N5 volumes.
+ * Spark client for filling holes in the tissue of exported wafer 60/61 N5 stack volumes.
  * <p>
- * Inputs are (a) an N5 tissue volume (only non-empty blocks stored), (b) an N5 mask marking where image data is
- * present ({@code mask > 0}) vs. missing ({@code mask == 0}), and (c) the acquisition xlog zarr. The ROI point cloud
- * is built in the tissue's s0 voxel frame from the ALIGNED render stack (so montage stitching is accounted for): the
- * first layer's tile bounds are fetched from the render web service on the driver, and each tile center (render world
- * pixels) is mapped to the voxel frame with {@code voxel = center - translate} (the neuroglancer group-level
+ * Each selected render stack is inpainted independently, so stacks are the unit of distribution here: one Spark task
+ * processes all blocks of one stack's export. A stack's export is located from its name (see {@link InpaintParameters}),
+ * e.g. stack w61_s070_r00_gc_bc_par_cc_aso_3d_s3i in project w61_serial_070_to_079 uses
+ * {@code /render/w61_serial_070_to_079/w61_s070_r00_gc_bc_par_cc_aso_3d_s3i___pixel} (tissue) and
+ * {@code ..._s3i___mask/s0} (mask marking where image data is present ({@code mask == 255}) vs. missing).
+ * <p>
+ * The ROI point cloud is built in the tissue's s0 voxel frame from the render stack itself (so montage stitching is
+ * accounted for): the first layer's tile bounds are fetched from the render web service, and each tile center (render
+ * world pixels) is mapped to the voxel frame with {@code voxel = center - translate} (the neuroglancer group-level
  * {@code translate}, i.e. the stack bounding-box min). Each tile carries the {@code distance_roi} of its SFOV, read
- * from the xlog for the slab whose {@code id_serial} equals {@code serial}: the tile's mfov (0-based) maps to the xlog
- * mfov axis as {@code render_mfov + 5} (the axis reserves 5 leading always-NaN rows), and its sfov number (the 1-based
- * {@code _s##} field) maps to the 0-based xlog sfov axis as {@code _s## - 1}.
+ * from the xlog for the slab whose {@code id_serial} equals the serial parsed from the stack name: the tile's mfov
+ * (0-based) maps to the xlog mfov axis as {@code render_mfov + 5} (the axis reserves 5 leading always-NaN rows), and
+ * its sfov number (the 1-based {@code _s##} field) maps to the 0-based xlog sfov axis as {@code _s## - 1}.
  * <p>
- * The client processes the full-resolution ({@code s0}) blocks of the tissue in parallel. For each block it first
- * applies the cheap ROI-distance filter (interpolating {@code distance_roi} at the block center via inverse-distance
- * weighting; blocks whose interpolated distance is {@code >= maxRoiDistance} are skipped without any I/O), then reads
- * the block (skipping absent/empty blocks) and fills every pixel where the mask is 0 with the average of the tissue in
- * the sections above and below (copying the single neighbor at the volume's z-boundary). Before overwriting a modified
- * block, the original block is copied verbatim into a sibling {@code _backup} N5 container. Finally, only the pyramid
- * blocks affected by the modified {@code s0} blocks are re-downsampled (again backing up the originals first), using
- * the same per-block averaging as {@code N5DownsamplerSpark} so the pyramid stays consistent.
+ * For each full-resolution ({@code s0}) block, the cheap ROI-distance filter is applied first (interpolating
+ * {@code distance_roi} at the block center via inverse-distance weighting; blocks whose interpolated distance is
+ * {@code >= maxRoiDistance} are skipped without any I/O). The block is then read (skipping absent/empty blocks) and
+ * every pixel where the mask is not 255 is filled with the average of the tissue in the sections above and below
+ * (copying the single neighbor at the volume's z-boundary). Before a changed block is overwritten, the original block
+ * is saved to the same grid position in the no paint group (e.g. {@code ..._s3i___pixel_no_paint/s0}). Finally, only
+ * the pyramid blocks affected by the changed {@code s0} blocks are re-downsampled (again saving the originals first),
+ * using the same per-block averaging as {@code N5DownsamplerSpark} so the pyramid stays consistent.
+ * <p>
+ * Reruns are safe: an original block is only saved the first time its block changes, and later runs inpaint from
+ * that saved original, so a rerun produces the same result and never replaces a saved original with inpainted data.
+ * A stack whose pixel group has the {@value #INPAINT_ATTRIBUTE} attribute (written when its inpainting completes)
+ * is skipped.
  */
-public class Wafer6061Inpainter {
+public class Wafer6061Inpainter
+        implements Serializable, AlignmentPipelineStep {
 
 	// Inverse-distance-weighting knobs for the ROI-distance interpolation; fixed for wafer 60/61.
 	private static final int IDW_K = 8;
 	private static final double IDW_POWER = 2.0;
 
-	// Tissue containers/datasets are named w<wafer>_s<serial>_r<revision> (e.g. w61_s109_r00); the serial is parsed from that.
-	private static final Pattern SERIAL_IN_NAME = Pattern.compile("_s(\\d+)");
+	// Stacks are named w<wafer>_s<serial>_r<revision>_... (e.g. w61_s109_r00_gc_bc_par_cc_aso_3d_s3i); the serial is parsed from the start of the name.
+	private static final Pattern SERIAL_IN_NAME = Pattern.compile("^w\\d+_s(\\d+)_");
 
 	// xlog field layout (consumed by loadPointCloud). The xlog is a zarr: its arrays are stored C-order, but the
 	// n5-zarr reader REVERSES the axis order, so the imglib2 axis indices below are the reverse of the C-order shape.
@@ -101,108 +113,21 @@ public class Wafer6061Inpainter {
 	// numbers each section's mfovs from 0, so the render mfov maps to the xlog mfov axis position as render_mfov + 5.
 	private static final int MFOV_ROW_OFFSET = 5;
 
+	/** Pixel group attribute written when a stack's inpainting completes (its presence makes reruns skip the stack). */
+	public static final String INPAINT_ATTRIBUTE = "inpaint";
+
 	private static final Logger LOG = LoggerFactory.getLogger(Wafer6061Inpainter.class);
 
 	public static class Parameters extends CommandLineParameters {
-		@Parameter(
-				names = "--n5Path",
-				description = "Path to the N5 container holding the tissue and mask (local path or gs://...).",
-				required = true)
-		public String n5Path;
 
-		@Parameter(
-				names = "--dataset",
-				description = "Name of the tissue multiscale group; the full-resolution data is at <dataset>/s0.",
-				required = true)
-		public String dataset;
+		@ParametersDelegate
+		public MultiProjectParameters multiProject = new MultiProjectParameters();
 
-		@Parameter(
-				names = "--mask",
-				description = "Name of the binary uint8 mask dataset (same grid as <dataset>/s0). Pass <group>/s0 if the mask is itself a pyramid.",
-				required = true)
-		public String mask;
-
-		@Parameter(
-				names = "--xlogPath",
-				description = "Path to the acquisition xlog zarr, e.g. xlog_wafer_61.zarr (local path or gs://...).",
-				required = true)
-		public String xlogPath;
-
-		@Parameter(
-				names = "--serial",
-				description = "Serial label (id_serial) of the section stored in this N5, resolved to the reference " +
-							  "arrays' slab position. Defaults to the serial parsed from the dataset name " +
-							  "(w<wafer>_s<serial>_r<revision>, e.g. w61_s109_r00 -> 109).")
-		public long serial = -1;
-
-		@Parameter(
-				names = "--maxRoiDistance",
-				description = "Keep (inpaint) a block only if its interpolated distance_roi (microns) is less than this.")
-		public double maxRoiDistance = 10.0;
-
-		@Parameter(
-				names = "--backupPath",
-				description = "N5 container where original (overwritten) blocks are backed up. Defaults to a sibling <container>_backup.n5.")
-		public String backupPath;
-
-		@Parameter(
-				names = "--dryRun",
-				description = "Only compute and log candidate / would-be-modified counts; do not write or back up anything.")
-		public boolean dryRun = false;
-
-		public String fullDataset() {
-			return dataset + "/s0";
-		}
-
-		public String getBackupPath() {
-			if (backupPath != null) {
-				return backupPath;
-			}
-			String p = n5Path;
-			while (p.endsWith("/")) {
-				p = p.substring(0, p.length() - 1);
-			}
-			if (p.endsWith(".n5")) {
-				return p.substring(0, p.length() - 3) + "_backup.n5";
-			}
-			return p + "_backup.n5";
-		}
-
-		public void validate() {
-			if (maxRoiDistance <= 0) {
-				throw new IllegalArgumentException("--maxRoiDistance must be positive");
-			}
-			if (serial < 0) {
-				serial = inferSerial(dataset);
-			}
-		}
-
-		/** Parses the serial label from a dataset/container name like {@code .../w61_s109_r00} (basename {@code _s<serial>}). */
-		static long inferSerial(final String path) {
-			final Matcher matcher = SERIAL_IN_NAME.matcher(basename(path));
-			if (matcher.find()) {
-				return Long.parseLong(matcher.group(1));
-			}
-			throw new IllegalArgumentException("could not infer the serial from '" + path + "'; pass --serial explicitly");
-		}
-
-		/** Last path segment of a path, stripped of any leading group/parent path and trailing slashes. */
-		static String basename(final String path) {
-			String p = path;
-			while (p.endsWith("/")) {
-				p = p.substring(0, p.length() - 1);
-			}
-			final int slash = p.lastIndexOf('/');
-			return slash >= 0 ? p.substring(slash + 1) : p;
-		}
+		@ParametersDelegate
+		public InpaintParameters inpaint = new InpaintParameters();
 	}
 
-	private final Parameters params;
-
-	public Wafer6061Inpainter(final Parameters params) {
-		this.params = params;
-	}
-
+	/** Run the client with command line parameters. */
 	public static void main(final String[] args) {
 		final ClientRunner clientRunner = new ClientRunner(args) {
 			@Override
@@ -210,75 +135,210 @@ public class Wafer6061Inpainter {
 
 				final Parameters parameters = new Parameters();
 				parameters.parse(args);
-				parameters.validate();
 
 				LOG.info("runClient: entry, parameters={}", parameters);
 
-				final Wafer6061Inpainter client = new Wafer6061Inpainter(parameters);
-				client.run();
+				final Wafer6061Inpainter client = new Wafer6061Inpainter();
+				client.createContextAndRun(parameters);
 			}
 		};
 		clientRunner.run();
 	}
 
-	public void run() throws IOException {
+	/** Empty constructor required for alignment pipeline steps. */
+	public Wafer6061Inpainter() {
+	}
 
-		// Read the tissue s0 metadata, the render target, the world->voxel offset, and discover the pyramid levels.
+	/** Create a spark context and run the client with the specified parameters. */
+	public void createContextAndRun(final Parameters clientParameters) throws IOException {
+		final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
+		try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
+			LOG.info("createContextAndRun: appId is {}", sparkContext.getConf().getAppId());
+			inpaintStacks(sparkContext, clientParameters.multiProject, clientParameters.inpaint);
+		}
+	}
+
+	/** Validates the specified pipeline parameters are sufficient. */
+	@Override
+	public void validatePipelineParameters(final AlignmentPipelineParameters pipelineParameters)
+			throws IllegalArgumentException {
+
+		final InpaintParameters inpaint = pipelineParameters.getInpaint();
+
+		AlignmentPipelineParameters.validateRequiredElementExists("inpaint", inpaint);
+
+		inpaint.validate();
+	}
+
+	/**
+	 * Runs the {@link org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId#INPAINT_WAFER_60_61
+	 * INPAINT_WAFER_60_61} step for the stacks in the pipeline's intensityCorrected stack group.
+	 */
+	@Override
+	public void runPipelineStep(final JavaSparkContext sparkContext,
+								final AlignmentPipelineParameters pipelineParameters)
+			throws IllegalArgumentException, IOException {
+
+		final StackIdNamingGroup namingGroup = pipelineParameters.getIntensityCorrectedNamingGroup();
+		if (namingGroup == null) {
+			throw new IllegalArgumentException("pipelineStackGroups.intensityCorrected must be defined");
+		}
+
+		final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(namingGroup);
+		inpaintStacks(sparkContext, multiProject, pipelineParameters.getInpaint());
+	}
+
+	/** Inpaints the export of each stack identified by the specified multiProject parameters, one stack per task. */
+	public void inpaintStacks(final JavaSparkContext sparkContext,
+							  final MultiProjectParameters multiProject,
+							  final InpaintParameters inpaint)
+			throws IllegalArgumentException, IOException {
+
+		LOG.info("inpaintStacks: entry, inpaint={}", inpaint);
+
+		inpaint.validate();
+
+		final String baseDataUrl = multiProject.getBaseDataUrl();
+		final List<StackId> stackIds = multiProject.stackIdWithZ.getStackIdList(multiProject.getDataClient());
+
+		// fail fast for parameters that match no stacks
+		if (stackIds.isEmpty()) {
+			throw new IllegalArgumentException("no stacks match the multiProject parameters " + multiProject.toJson());
+		}
+
+		// Check every stack's export before inpainting anything, so that a missing or mismatched export fails the
+		// run before any data is changed.
+		final List<StackId> stacksToInpaint = new ArrayList<>();
+		final List<StackId> completedStacks = new ArrayList<>();
+		try (final N5Reader n5 = openN5Reader(inpaint.n5Path)) {
+			for (final StackId stackId : stackIds) {
+				inferSerial(stackId.getStack()); // throws if the stack name has no serial
+				validateExport(n5, stackId, inpaint);
+				if (readInpaintRecord(n5, inpaint.getPixelDataset(stackId)) != null) {
+					completedStacks.add(stackId);
+				} else {
+					stacksToInpaint.add(stackId);
+				}
+			}
+		}
+
+		for (final StackId stackId : completedStacks) {
+			LOG.info("inpaintStacks: skipping {} because {} has the '{}' attribute from an earlier run",
+					 stackId.toDevString(), inpaint.getPixelDataset(stackId), INPAINT_ATTRIBUTE);
+		}
+
+		if (stacksToInpaint.isEmpty()) {
+			LOG.info("inpaintStacks: exit, all {} stack(s) were already inpainted", stackIds.size());
+			return;
+		}
+
+		LOG.info("inpaintStacks: distributing inpainting of {} stack(s) with parallelism {} (defaultParallelism={}), " +
+				 "skipped {} already inpainted stack(s)",
+				 stacksToInpaint.size(), stacksToInpaint.size(), sparkContext.defaultParallelism(),
+				 completedStacks.size());
+
+		final List<String> stackSummaries = sparkContext
+				.parallelize(stacksToInpaint, stacksToInpaint.size())
+				.map(stackId -> {
+					LogUtilities.setupExecutorLog4j(stackId.toDevString());
+					return inpaintStack(baseDataUrl, stackId, inpaint);
+				})
+				.collect();
+
+		for (final String stackSummary : stackSummaries) {
+			LOG.info("inpaintStacks: {}", stackSummary);
+		}
+
+		LOG.info("inpaintStacks: exit, {} {} stack(s)",
+				 inpaint.dryRun ? "checked (dry run)" : "inpainted", stackSummaries.size());
+	}
+
+	/**
+	 * Checks that the specified stack's export exists and can be inpainted block by block.
+	 *
+	 * @throws IllegalArgumentException
+	 *   if the pixel or mask dataset is missing or their grids are not usable.
+	 */
+	static void validateExport(final N5Reader n5,
+							   final StackId stackId,
+							   final InpaintParameters inpaint)
+			throws IllegalArgumentException {
+
+		final String s0Dataset = inpaint.getPixelDataset(stackId) + "/s0";
+		final String maskDataset = inpaint.getMaskS0Dataset(stackId);
+		final String context = " (for stack " + stackId.toDevString() + " in " + inpaint.n5Path + ")";
+
+		final DatasetAttributes s0Attributes = n5.getDatasetAttributes(s0Dataset);
+		if (s0Attributes == null) {
+			throw new IllegalArgumentException("tissue dataset " + s0Dataset + " does not exist" + context);
+		}
+		if (s0Attributes.getNumDimensions() != 3) {
+			throw new IllegalArgumentException("expected a 3D tissue volume but " + s0Dataset + " has " +
+											   s0Attributes.getNumDimensions() + " dimensions" + context);
+		}
+
+		final DatasetAttributes maskAttributes = n5.getDatasetAttributes(maskDataset);
+		if (maskAttributes == null) {
+			throw new IllegalArgumentException("mask dataset " + maskDataset + " does not exist" + context);
+		}
+
+		// Blocks are read and written one at a time (no whole-volume open, so no accumulating cell cache). That
+		// requires z to be a single chunk, so that every z-1 / z+1 section the z-average needs lives inside the block;
+		// and the mask is read by the tissue block's grid position, so the two datasets must share the same block grid
+		// and origin.
+		if (s0Attributes.getBlockSize()[2] < s0Attributes.getDimensions()[2]) {
+			throw new IllegalArgumentException(
+					"block-local inpainting requires z to be a single chunk, but " + s0Dataset +
+					" has blockSize[2]=" + s0Attributes.getBlockSize()[2] +
+					" < dimensions[2]=" + s0Attributes.getDimensions()[2] + context);
+		}
+		if (! Arrays.equals(maskAttributes.getBlockSize(), s0Attributes.getBlockSize()) ||
+			! Arrays.equals(maskAttributes.getDimensions(), s0Attributes.getDimensions())) {
+			throw new IllegalArgumentException(
+					"mask grid " + Arrays.toString(maskAttributes.getDimensions()) + " @ " +
+					Arrays.toString(maskAttributes.getBlockSize()) + " must match tissue grid " +
+					Arrays.toString(s0Attributes.getDimensions()) + " @ " +
+					Arrays.toString(s0Attributes.getBlockSize()) + context);
+		}
+	}
+
+	/**
+	 * Inpaints one stack's export (runs within a single Spark task).
+	 *
+	 * @return a one line summary of what was done.
+	 */
+	static String inpaintStack(final String baseDataUrl,
+							   final StackId stackId,
+							   final InpaintParameters inpaint)
+			throws IOException {
+
+		final String stack = stackId.getStack();
+		final long serial = inferSerial(stack);
+		final String pixelGroup = inpaint.getPixelDataset(stackId);
+		final String noPaintGroup = inpaint.getNoPaintDataset(stackId);
+		final String maskDataset = inpaint.getMaskS0Dataset(stackId);
+
+		LOG.info("inpaintStack: entry, stack={}, serial={}, pixelGroup={}, maskDataset={}, noPaintGroup={}",
+				 stackId.toDevString(), serial, pixelGroup, maskDataset, noPaintGroup);
+
+		// Read the tissue level metadata and the world->voxel offset, and discover the pyramid levels.
 		final double[] worldToVoxel;
-		final RenderTarget renderTarget;
-		final int numDimensions;
 		final List<String> levels = new ArrayList<>();
 		final Map<String, DatasetAttributes> levelAttributes = new LinkedHashMap<>();
 		int[] downsampleFactors = null;
-		try (final N5Reader n5 = openN5Reader(params.n5Path)) {
+		try (final N5Reader n5 = openN5Reader(inpaint.n5Path)) {
 
-			final DatasetAttributes s0Attributes = n5.getDatasetAttributes(params.fullDataset());
-			if (s0Attributes == null) {
-				throw new IllegalArgumentException("tissue dataset " + params.fullDataset() + " does not exist");
-			}
-			numDimensions = s0Attributes.getNumDimensions();
-			if (numDimensions != 3) {
-				throw new IllegalArgumentException("expected a 3D tissue volume but " + params.fullDataset() +
-												   " has " + numDimensions + " dimensions");
-			}
-			final DatasetAttributes maskAttributes = n5.getDatasetAttributes(params.mask);
-			if (maskAttributes == null) {
-				throw new IllegalArgumentException("mask dataset " + params.mask + " does not exist");
-			}
+			validateExport(n5, stackId, inpaint);
 
-			// The inpainter reads and writes one chunk at a time (no whole-volume open, so no accumulating cell
-			// cache). That requires z to be a single chunk, so that every z-1 / z+1 section the z-average needs lives
-			// inside the block; and it reads the mask by the tissue block's grid position, so the two datasets must
-			// share the same block grid and origin.
-			if (s0Attributes.getBlockSize()[2] < s0Attributes.getDimensions()[2]) {
-				throw new IllegalArgumentException(
-						"block-local inpainting requires z to be a single chunk, but " + params.fullDataset() +
-						" has blockSize[2]=" + s0Attributes.getBlockSize()[2] +
-						" < dimensions[2]=" + s0Attributes.getDimensions()[2]);
-			}
-			if (! Arrays.equals(maskAttributes.getBlockSize(), s0Attributes.getBlockSize()) ||
-				! Arrays.equals(maskAttributes.getDimensions(), s0Attributes.getDimensions())) {
-				throw new IllegalArgumentException(
-						"mask grid " + Arrays.toString(maskAttributes.getDimensions()) + " @ " +
-						Arrays.toString(maskAttributes.getBlockSize()) + " must match tissue grid " +
-						Arrays.toString(s0Attributes.getDimensions()) + " @ " +
-						Arrays.toString(s0Attributes.getBlockSize()));
-			}
-
-			// Render service parameters (baseDataUrl / owner / project / stack) come straight from the group's
-			// "renderExport" metadata written by render's N5 export — the same attributes.json that holds the pyramid
-			// scales and translate — so they never have to be passed on the command line.
-			renderTarget = readRenderTarget(n5, params.dataset);
+			warnIfExportedFromDifferentStack(n5, pixelGroup, stack);
 
 			// World->voxel offset for placing render tile centers: the neuroglancer 'translate' (the stack
 			// bounding-box min in world pixels) is written on the multiscale GROUP, not on s0 (s0 only carries a
 			// sub-pixel centering transform). May be null here; loadPointCloud falls back to the render stack bounds.
-			worldToVoxel = readGroupTranslate(n5, params.dataset);
+			worldToVoxel = readGroupTranslate(n5, pixelGroup);
 
-			levels.add(params.fullDataset());
-			levelAttributes.put(params.fullDataset(), s0Attributes);
-			for (int scale = 1; ; scale++) {
-				final String levelDataset = params.dataset + "/s" + scale;
+			for (int scale = 0; ; scale++) {
+				final String levelDataset = pixelGroup + "/s" + scale;
 				if (! n5.datasetExists(levelDataset)) {
 					break;
 				}
@@ -291,110 +351,78 @@ public class Wafer6061Inpainter {
 			// pyramids are built with a constant factor at every step (see DownsampleHelper / N5DownsamplerSpark), so
 			// scales[1] applies to all levels.
 			if (levels.size() > 1) {
-				downsampleFactors = readDownsamplingFactors(n5, params.dataset, numDimensions);
+				downsampleFactors = readDownsamplingFactors(n5, pixelGroup, 3);
 			}
 		}
-		LOG.info("run: world->voxel translate={}, pyramid levels={}, downsampleFactors={}",
+		LOG.info("inpaintStack: world->voxel translate={}, pyramid levels={}, downsampleFactors={}",
 				 Arrays.toString(worldToVoxel), levels, Arrays.toString(downsampleFactors));
 
-		// Load the (small) per-slab ROI point cloud on the driver: positions from the aligned render stack, distances
-		// from the xlog. A single render request keeps the server load light; the cloud is then broadcast to executors.
-		final RenderDataClient renderClient =
-				new RenderDataClient(renderTarget.baseDataUrl, renderTarget.owner, renderTarget.project);
-		final PointCloud cloud = loadPointCloud(params, renderClient, renderTarget.stack, worldToVoxel);
-		LOG.info("run: loaded {} ROI reference points for serial {} (render {} {}/{}/{})",
-				 cloud.size(), params.serial, renderTarget.baseDataUrl, renderTarget.owner, renderTarget.project,
-				 renderTarget.stack);
+		// Load the (small) ROI point cloud: positions from the render stack, distances from the xlog.
+		final RenderDataClient renderClient = new RenderDataClient(baseDataUrl, stackId.getOwner(), stackId.getProject());
+		final PointCloud cloud = loadPointCloud(inpaint.xlogPath, serial, pixelGroup, renderClient, stack, worldToVoxel);
+		LOG.info("inpaintStack: loaded {} ROI reference points for serial {} from {}",
+				 cloud.size(), serial, stackId.toDevString());
 
-		// Create the backup container and mirror all datasets that might receive backups.
-		final String backupPath = params.getBackupPath();
-		if (! params.dryRun) {
-			try (final N5Writer backup = openN5Writer(backupPath)) {
+		// Create the no paint datasets for every level that might receive a saved original.
+		if (! inpaint.dryRun) {
+			try (final N5Writer n5 = openN5Writer(inpaint.n5Path)) {
 				for (final String levelDataset : levels) {
-					if (! backup.datasetExists(levelDataset)) {
-						backup.createDataset(levelDataset, levelAttributes.get(levelDataset));
+					final String noPaintDataset = toNoPaintDataset(levelDataset, pixelGroup, noPaintGroup);
+					if (! n5.datasetExists(noPaintDataset)) {
+						n5.createDataset(noPaintDataset, levelAttributes.get(levelDataset));
 					}
 				}
 			}
-			LOG.info("run: originals will be backed up to {}", backupPath);
 		}
 
-		final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
-		try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
-			LOG.info("run: appId is {}", sparkContext.getConf().getAppId());
-			runWithSparkContext(sparkContext, cloud, levels, levelAttributes, backupPath, downsampleFactors);
-		}
-	}
+		final String s0Dataset = levels.getFirst();
+		final List<long[]> modifiedS0 = inpaintS0Blocks(stack,
+														serial,
+														inpaint,
+														s0Dataset,
+														levelAttributes.get(s0Dataset),
+														maskDataset,
+														toNoPaintDataset(s0Dataset, pixelGroup, noPaintGroup),
+														cloud);
 
-	private void runWithSparkContext(final JavaSparkContext sparkContext,
-									 final PointCloud cloud,
-									 final List<String> levels,
-									 final Map<String, DatasetAttributes> levelAttributes,
-									 final String backupPath,
-									 final int[] downsampleFactors) {
-
-		final DatasetAttributes s0Attributes = levelAttributes.get(params.fullDataset());
-		final List<Grid.Block> s0Blocks = new ArrayList<>(Grid.create(s0Attributes.getDimensions(),
-																	   s0Attributes.getBlockSize()));
-
-		// Grid.create returns blocks in raster order, and Spark's parallelize slices the list into contiguous
-		// partitions. The blocks that actually do work (present-check + inpaint) are the near-ROI ones, and the ROI is
-		// a small, spatially clustered region, so contiguous slicing piles all the expensive blocks into a few
-		// partitions while the rest only run the cheap no-I/O distance filter -> severe load skew. Shuffling first gives
-		// every partition a representative mix of near- and far-ROI blocks, so the pass is balanced. The seed (serial)
-		// keeps the partitioning reproducible, and the outputs (emitted grid positions, per-block decision logs) are
-		// order-independent, so this changes only the distribution of work, not the result.
-		Collections.shuffle(s0Blocks, new Random(params.serial));
-		LOG.info("runWithSparkContext: {} s0 grid blocks to consider (shuffled for load balance)", s0Blocks.size());
-
-		final Broadcast<PointCloud> cloudBroadcast = sparkContext.broadcast(cloud);
-		final Broadcast<Parameters> paramsBroadcast = sparkContext.broadcast(params);
-
-		// A single driver line carries the grid extent and z-depth the visualization needs; the per-block
-		// 'blockDecision ...' lines are logged on the executors (see inpaintPartition / logDecision).
-		final long[] dims = s0Attributes.getDimensions();
-		final int[] blockSize = s0Attributes.getBlockSize();
-		LOG.info("runWithSparkContext: diagnostics metadata serial={} maxRoiDistance={} gridX={} gridY={} zLayers={}",
-				 params.serial, params.maxRoiDistance,
-				 (dims[0] + blockSize[0] - 1) / blockSize[0], (dims[1] + blockSize[1] - 1) / blockSize[1], dims[2]);
-
-		// 2. + 3. Filter (distance, then presence) and inpaint in one distributed pass.
-		final String backup = params.dryRun ? null : backupPath;
-		final JavaRDD<long[]> modifiedRDD = sparkContext.parallelize(s0Blocks).mapPartitions(
-				blockIterator -> inpaintPartition(blockIterator,
-												  cloudBroadcast.value(),
-												  paramsBroadcast.value(),
-												  backup));
-
-		final List<long[]> modifiedS0 = modifiedRDD.collect();
-		LOG.info("runWithSparkContext: {} s0 block(s) were {}",
-				 modifiedS0.size(), params.dryRun ? "identified for inpainting (dry run)" : "inpainted");
-
-		if (params.dryRun || modifiedS0.isEmpty()) {
-			return;
+		if ((! inpaint.dryRun) && (! modifiedS0.isEmpty()) && (levels.size() > 1)) {
+			updatePyramid(inpaint.n5Path, pixelGroup, noPaintGroup, levels, levelAttributes, modifiedS0,
+						  downsampleFactors);
 		}
 
-		// 6. Selectively update the downsample pyramid, one level at a time.
-		updatePyramid(sparkContext, levels, levelAttributes, modifiedS0, backupPath, downsampleFactors);
+		if (! inpaint.dryRun) {
+			try (final N5Writer n5 = openN5Writer(inpaint.n5Path)) {
+				n5.setAttribute(pixelGroup,
+								INPAINT_ATTRIBUTE,
+								new InpaintRecord(inpaint, noPaintGroup, modifiedS0.size()));
+			}
+		}
+
+		final String summary = stackId.toDevString() + ": " + modifiedS0.size() + " s0 block(s) " +
+							   (inpaint.dryRun ? "would be inpainted (dry run)" : "inpainted");
+		LOG.info("inpaintStack: exit, {}", summary);
+		return summary;
 	}
 
 	// ------------------------------------------------------------------------------------------------
-	// Step 1: load the per-slab ROI point cloud (positions from the aligned render stack, distances from the xlog).
+	// Step 1: load the per-slab ROI point cloud (positions from the render stack, distances from the xlog).
 	// ------------------------------------------------------------------------------------------------
 
 	/**
-	 * Builds the per-slab ROI point cloud in the tissue s0 <b>voxel</b> frame. Positions come from the ALIGNED render
-	 * stack (so montage stitching is accounted for): the first layer's tile bounds are fetched from the render web
-	 * service on the driver, and each tile center (render world pixels) is mapped to the voxel frame with
+	 * Builds the per-slab ROI point cloud in the tissue s0 <b>voxel</b> frame. Positions come from the render stack
+	 * (so montage stitching is accounted for): the first layer's tile bounds are fetched from the render web
+	 * service, and each tile center (render world pixels) is mapped to the voxel frame with
 	 * {@code voxel = center - worldToVoxel} ({@code worldToVoxel} is the neuroglancer group-level {@code translate},
 	 * i.e. the stack bounding-box min; if it is null we fall back to the render stack bounds). Each tile carries the
 	 * {@code distance_roi} of its SFOV, read from the xlog for the slab whose {@code id_serial} equals
-	 * {@code params.serial}: the tile's mfov (0-based, parsed from the tileId) maps to the xlog mfov axis as
+	 * {@code serial}: the tile's mfov (0-based, parsed from the tileId) maps to the xlog mfov axis as
 	 * {@code render_mfov + 5} (the axis reserves 5 leading always-NaN rows; see {@link #MFOV_ROW_OFFSET}), and its sfov
 	 * number (the 1-based {@code _s##} field) maps to the 0-based xlog sfov axis as {@code _s## - 1}.
 	 * Tiles whose SFOV has no (NaN) {@code distance_roi}, or an out-of-range mfov/sfov, are dropped.
 	 */
-	static PointCloud loadPointCloud(final Parameters params,
+	static PointCloud loadPointCloud(final String xlogPath,
+									 final long serial,
+									 final String pixelGroup,
 									 final RenderDataClient renderClient,
 									 final String stack,
 									 final double[] worldToVoxel)
@@ -402,16 +430,16 @@ public class Wafer6061Inpainter {
 
 		// (a) xlog: the slab's 2-D distance_roi grid, materialized into a plain array so it outlives the xlog reader.
 		final double[][] distBySfovMfov; // [rowMajorSfov0Based][mfov0Based]
-		try (final N5Reader xlog = new N5Factory().openReader(params.xlogPath)) {
+		try (final N5Reader xlog = new N5Factory().openReader(xlogPath)) {
 
 			final double[] idSerial = read1d(xlog);
-			final int slabPosition = findSlabPosition(idSerial, params.serial);
+			final int slabPosition = findSlabPosition(idSerial, serial);
 			if (slabPosition < 0) {
 				final long[] available = new long[idSerial.length];
 				for (int i = 0; i < idSerial.length; i++) {
 					available[i] = Math.round(idSerial[i]);
 				}
-				throw new IllegalArgumentException("serial " + params.serial + " not found in id_serial; available serials are " +
+				throw new IllegalArgumentException("serial " + serial + " not found in id_serial; available serials are " +
 												   Arrays.toString(available));
 			}
 
@@ -433,17 +461,17 @@ public class Wafer6061Inpainter {
 				}
 			}
 			LOG.info("loadPointCloud: serial {} -> slab position {}, distance_roi grid is {} sfov x {} mfov",
-					 params.serial, slabPosition, nSfov, nMfov);
+					 serial, slabPosition, nSfov, nMfov);
 		}
 		final int nSfov = distBySfovMfov.length;
 		final int nMfov = nSfov > 0 ? distBySfovMfov[0].length : 0;
 
-		// (b) render: the first layer's aligned tile centers, fetched once on the driver.
+		// (b) render: the first layer's tile centers.
 		final List<Double> zValues = renderClient.getStackZValues(stack);
 		if (zValues.isEmpty()) {
 			throw new IllegalArgumentException("render stack " + stack + " has no z layers");
 		}
-		final double firstZ = zValues.get(0);
+		final double firstZ = zValues.getFirst();
 		final List<TileBounds> tiles = renderClient.getTileBounds(stack, firstZ);
 
 		final double offsetX;
@@ -454,13 +482,13 @@ public class Wafer6061Inpainter {
 		} else {
 			final Bounds stackBounds = renderClient.getStackMetaData(stack).getStackBounds();
 			if (stackBounds == null || stackBounds.getMinX() == null || stackBounds.getMinY() == null) {
-				throw new IllegalArgumentException("N5 group " + params.dataset + " has no neuroglancer 'translate' and " +
+				throw new IllegalArgumentException("N5 group " + pixelGroup + " has no neuroglancer 'translate' and " +
 												   "render stack " + stack + " has no bounds; cannot map world coordinates to voxels");
 			}
 			offsetX = stackBounds.getMinX();
 			offsetY = stackBounds.getMinY();
 			LOG.warn("loadPointCloud: N5 group {} has no 'translate'; using render stack bounds min ({}, {}) as the world->voxel offset",
-					 params.dataset, offsetX, offsetY);
+					 pixelGroup, offsetX, offsetY);
 		}
 
 		// Attach each tile's distance_roi (by mfov + sfov) and place its center in the voxel frame.
@@ -541,32 +569,50 @@ public class Wafer6061Inpainter {
 	}
 
 	// ------------------------------------------------------------------------------------------------
-	// Steps 2 + 3: filter and inpaint one partition of s0 blocks.
+	// Steps 2 + 3: filter and inpaint the s0 blocks of one stack.
 	// ------------------------------------------------------------------------------------------------
 
-	private static Iterator<long[]> inpaintPartition(final Iterator<Grid.Block> blocks,
-													 final PointCloud cloud,
-													 final Parameters params,
-													 final String backupPath) {
+	/**
+	 * Filters and inpaints every s0 block of one stack's export, saving the original version of each changed block
+	 * to the no paint dataset the first time it changes.
+	 *
+	 * @return grid positions of the s0 blocks that were (or in a dry run would be) inpainted.
+	 */
+	private static List<long[]> inpaintS0Blocks(final String stack,
+												final long serial,
+												final InpaintParameters inpaint,
+												final String s0Dataset,
+												final DatasetAttributes s0Attributes,
+												final String maskDataset,
+												final String noPaintS0Dataset,
+												final PointCloud cloud) {
 
-		LogUtilities.setupExecutorLog4j("inpaint");
+		final List<Grid.Block> s0Blocks = Grid.create(s0Attributes.getDimensions(), s0Attributes.getBlockSize());
+
+		// A single line carries the grid extent and z-depth the visualization needs; the per-block
+		// 'blockDecision ...' lines follow (see logDecision).
+		final long[] dims = s0Attributes.getDimensions();
+		final int[] blockSize = s0Attributes.getBlockSize();
+		LOG.info("inpaintS0Blocks: diagnostics metadata stack={} serial={} maxRoiDistance={} gridX={} gridY={} zLayers={}",
+				 stack, serial, inpaint.maxRoiDistance,
+				 (dims[0] + blockSize[0] - 1) / blockSize[0], (dims[1] + blockSize[1] - 1) / blockSize[1], dims[2]);
 
 		final List<long[]> modified = new ArrayList<>();
 		final KNearestNeighborSearchOnKDTree<DoubleType> search = cloud.buildSearch();
 
-		try (final N5Reader reader = openN5Reader(params.n5Path);
-			 final N5Writer tissueWriter = params.dryRun ? null : openN5Writer(params.n5Path);
-			 final N5Writer backupWriter = params.dryRun ? null : openN5Writer(backupPath)) {
+		try (final N5Reader reader = openN5Reader(inpaint.n5Path);
+			 final N5Writer writer = inpaint.dryRun ? null : openN5Writer(inpaint.n5Path)) {
 
-			final DatasetAttributes s0Attributes = reader.getDatasetAttributes(params.fullDataset());
-			final DatasetAttributes maskAttributes = reader.getDatasetAttributes(params.mask);
+			final DatasetAttributes maskAttributes = reader.getDatasetAttributes(maskDataset);
 
-			long considered = 0;
+			// The no paint dataset only exists after a (possibly interrupted) earlier run or once it is created
+			// before a real run, so a first dry run never looks for saved originals.
+			final boolean hasNoPaintDataset = reader.datasetExists(noPaintS0Dataset);
+
 			long nearRoi = 0;
 			long present = 0;
-			while (blocks.hasNext()) {
-				final Grid.Block block = blocks.next();
-				considered++;
+			long previouslyInpainted = 0;
+			for (final Grid.Block block : s0Blocks) {
 				final long gridX = block.gridPosition[0];
 				final long gridY = block.gridPosition[1];
 
@@ -576,47 +622,61 @@ public class Wafer6061Inpainter {
 				final double centerX = block.offset[0] + block.dimensions[0] / 2.0;
 				final double centerY = block.offset[1] + block.dimensions[1] / 2.0;
 				final double roiDistance = cloud.interpolate(search, centerX, centerY);
-				if (! (roiDistance < params.maxRoiDistance)) {
-					logDecision(gridX, gridY, "outside_roi", -1, roiDistance);
+				if (! (roiDistance < inpaint.maxRoiDistance)) {
+					logDecision(stack, gridX, gridY, "outside_roi", -1, roiDistance);
 					continue;
 				}
 				nearRoi++;
 
-				// (2) presence check: readBlock returns null for absent (empty) blocks. The block it returns is also
-				// the raw tissue we inpaint from and back up, so no whole-volume open (and no accumulating cell cache)
-				// is needed: because z is a single chunk (guarded on the driver), every z-1 / z+1 section the
-				// z-average reads lives inside this same block. Near-ROI empty blocks are not logged: the distance
-				// filter runs before this presence check, so block emptiness is not observable outside the ROI.
-				final DataBlock<?> tissueBlock = reader.readBlock(params.fullDataset(), s0Attributes, block.gridPosition);
-				if (tissueBlock == null) {
+				// (2) presence check: readBlock returns null for absent (empty) blocks. Because z is a single chunk
+				// (checked by validateExport), every z-1 / z+1 section the z-average reads lives inside this same
+				// block. Near-ROI empty blocks are not logged: the distance filter runs before this presence check,
+				// so block emptiness is not observable outside the ROI.
+				final DataBlock<?> currentBlock = reader.readBlock(s0Dataset, s0Attributes, block.gridPosition);
+				if (currentBlock == null) {
 					continue;
 				}
 				present++;
 
-				// (3) inpaint: fill mask==0 pixels with the z-average of the sections above/below. The mask is read by
-				// the same grid position (the datasets share a grid, guarded on the driver); an absent mask block
-				// counts as all-background (all holes), matching a zero-filled whole-volume read of a missing chunk.
-				final DataBlock<?> maskBlock = reader.readBlock(params.mask, maskAttributes, block.gridPosition);
-				final InpaintResult result = inpaintBlock(asByteImg(tissueBlock, block.dimensions),
+				// A block that an earlier (possibly interrupted) run changed has its original saved in the no paint
+				// dataset. Inpainting from that original reproduces the earlier result instead of inpainting
+				// already inpainted data, and the saved original is never replaced.
+				final DataBlock<?> savedOriginal = hasNoPaintDataset ?
+												   reader.readBlock(noPaintS0Dataset, s0Attributes, block.gridPosition) :
+												   null;
+				if (savedOriginal != null) {
+					previouslyInpainted++;
+				}
+				final DataBlock<?> originalBlock = savedOriginal == null ? currentBlock : savedOriginal;
+
+				// (3) inpaint: fill mask!=255 pixels with the z-average of the sections above/below. The mask is read
+				// by the same grid position (the datasets share a grid, checked by validateExport); an absent mask
+				// block counts as all-background (all holes), matching a zero-filled whole-volume read of a missing
+				// chunk.
+				final DataBlock<?> maskBlock = reader.readBlock(maskDataset, maskAttributes, block.gridPosition);
+				final InpaintResult result = inpaintBlock(asByteImg(originalBlock, block.dimensions),
 														  asByteImg(maskBlock, block.dimensions),
 														  block.dimensions);
 				if (! result.changed) {
-					logDecision(gridX, gridY, "inside_roi", -1, roiDistance);
+					logDecision(stack, gridX, gridY, "inside_roi", -1, roiDistance);
 					continue;
 				}
 
 				modified.add(block.gridPosition);
-				if (! params.dryRun) {
-					backupWriter.writeBlock(params.fullDataset(), s0Attributes, tissueBlock);
-					N5Utils.saveBlock(result.inpainted, tissueWriter, params.fullDataset(), s0Attributes, block.gridPosition);
+				if (writer != null) {
+					if (savedOriginal == null) {
+						writer.writeBlock(noPaintS0Dataset, s0Attributes, currentBlock);
+					}
+					N5Utils.saveBlock(result.inpainted, writer, s0Dataset, s0Attributes, block.gridPosition);
 				}
-				logDecision(gridX, gridY, "inpainted", result.minChangedLayer, roiDistance);
+				logDecision(stack, gridX, gridY, "inpainted", result.minChangedLayer, roiDistance);
 			}
-			LOG.info("inpaintPartition: partition summary: considered={}, nearRoi(<{}um)={}, present={}, inpainted={}",
-					 considered, params.maxRoiDistance, nearRoi, present, modified.size());
+			LOG.info("inpaintS0Blocks: summary for {}: considered={}, nearRoi(<{}um)={}, present={}, inpainted={} (previously inpainted={})",
+					 stack, s0Blocks.size(), inpaint.maxRoiDistance, nearRoi, present, modified.size(),
+					 previouslyInpainted);
 		}
 
-		return modified.iterator();
+		return modified;
 	}
 
 	/**
@@ -624,10 +684,10 @@ public class Wafer6061Inpainter {
 	 * a fixed {@code blockDecision key=value ...} shape means the log is the single source of truth — no file is written
 	 * and no decision logic is re-derived downstream.
 	 */
-	private static void logDecision(final long gridX, final long gridY, final String decision,
+	private static void logDecision(final String stack, final long gridX, final long gridY, final String decision,
 									final int minLayer, final double roiDistance) {
-		LOG.info("blockDecision gridX={} gridY={} decision={} minLayer={} roiDistance={}",
-				 gridX, gridY, decision, minLayer, roiDistance);
+		LOG.info("blockDecision stack={} gridX={} gridY={} decision={} minLayer={} roiDistance={}",
+				 stack, gridX, gridY, decision, minLayer, roiDistance);
 	}
 
 	/**
@@ -642,11 +702,11 @@ public class Wafer6061Inpainter {
 	}
 
 	/**
-	 * Produces the inpainted version of a single block: every pixel where the mask is 0 is replaced with the average
-	 * of the tissue in the sections above and below (the single neighbor is copied at the block's z-boundary). Both
-	 * {@code tissueBlock} and {@code maskBlock} are block-local images with dimensions {@code blockDimensions}; because
-	 * the volume is a single z-chunk, the block's z-boundary is the volume's z-boundary, so no neighbouring block is
-	 * needed for the z-average.
+	 * Produces the inpainted version of a single block: every pixel where the mask is not 255 is replaced with the
+	 * average of the tissue in the sections above and below (the single neighbor is copied at the block's z-boundary).
+	 * Both {@code tissueBlock} and {@code maskBlock} are block-local images with dimensions {@code blockDimensions};
+	 * because the volume is a single z-chunk, the block's z-boundary is the volume's z-boundary, so no neighbouring
+	 * block is needed for the z-average.
 	 */
 	static InpaintResult inpaintBlock(final RandomAccessibleInterval<UnsignedByteType> tissueBlock,
 									  final RandomAccessibleInterval<UnsignedByteType> maskBlock,
@@ -708,91 +768,59 @@ public class Wafer6061Inpainter {
 	}
 
 	// ------------------------------------------------------------------------------------------------
-	// Step 6: selectively re-downsample only the pyramid blocks affected by the modified s0 blocks.
+	// Step 4: selectively re-downsample only the pyramid blocks affected by the modified s0 blocks.
 	// ------------------------------------------------------------------------------------------------
 
-	private void updatePyramid(final JavaSparkContext sparkContext,
-							   final List<String> levels,
-							   final Map<String, DatasetAttributes> levelAttributes,
-							   final List<long[]> modifiedS0,
-							   final String backupPath,
-							   final int[] factors) {
+	private static void updatePyramid(final String n5Path,
+									  final String pixelGroup,
+									  final String noPaintGroup,
+									  final List<String> levels,
+									  final Map<String, DatasetAttributes> levelAttributes,
+									  final List<long[]> modifiedS0,
+									  final int[] factors) {
 
-		List<long[]> modifiedPrevious = modifiedS0;
+		try (final N5Writer n5 = openN5Writer(n5Path)) {
 
-		for (int scale = 1; scale < levels.size(); scale++) {
-			final String fromDataset = levels.get(scale - 1);
-			final String toDataset = levels.get(scale);
-			final DatasetAttributes toAttributes = levelAttributes.get(toDataset);
+			List<long[]> modifiedPrevious = modifiedS0;
 
-			// affected blocks: previous-level grid position p maps to this-level block p / factor.
-			final Map<String, long[]> affected = new LinkedHashMap<>();
-			for (final long[] p : modifiedPrevious) {
-				final long[] g = affectedBlock(p, factors);
-				affected.putIfAbsent(Arrays.toString(g), g);
+			for (int scale = 1; scale < levels.size(); scale++) {
+				final String fromDataset = levels.get(scale - 1);
+				final String toDataset = levels.get(scale);
+				final String noPaintToDataset = toNoPaintDataset(toDataset, pixelGroup, noPaintGroup);
+				final DatasetAttributes toAttributes = levelAttributes.get(toDataset);
+				final CellGrid cellGrid = new CellGrid(toAttributes.getDimensions(), toAttributes.getBlockSize());
+
+				// affected blocks: previous-level grid position p maps to this-level block p / factor.
+				final Map<String, long[]> affected = new LinkedHashMap<>();
+				for (final long[] p : modifiedPrevious) {
+					final long[] g = affectedBlock(p, factors);
+					affected.putIfAbsent(Arrays.toString(g), g);
+				}
+				final List<long[]> affectedBlocks = new ArrayList<>(affected.values());
+				LOG.info("updatePyramid: re-downsampling {} block(s) for {}", affectedBlocks.size(), toDataset);
+
+				for (final long[] gridPosition : affectedBlocks) {
+					downsampleBlock(n5, cellGrid, gridPosition, fromDataset, toDataset, toAttributes,
+									noPaintToDataset, factors);
+				}
+
+				modifiedPrevious = affectedBlocks;
 			}
-			final List<long[]> affectedBlocks = new ArrayList<>(affected.values());
-			// Every affected block does real work, so there is no near/far skew here, but the per-block cost still varies
-			// with how much of its source region is actually present (dense in the ROI interior, sparse at its edge).
-			// The affected blocks inherit a spatial order, so contiguous partitioning would group same-density
-			// neighbours together and leave some partitions all-dense and others all-sparse. Shuffle (as for s0) mixes
-			// densities across partitions; the seed varies per level but stays reproducible.
-			Collections.shuffle(affectedBlocks, new Random(params.serial * 31L + scale));
-			LOG.info("updatePyramid: re-downsampling {} block(s) for {}", affectedBlocks.size(), toDataset);
-
-			final String n5Path = params.n5Path;
-			sparkContext.parallelize(affectedBlocks).foreachPartition(
-					gridPositions -> downsamplePartition(gridPositions, n5Path, backupPath,
-														 fromDataset, toDataset, toAttributes, factors));
-
-			modifiedPrevious = affectedBlocks;
 		}
 	}
 
 	/**
-	 * Re-downsamples one partition's worth of pyramid blocks, opening the N5 handles and the source level <b>once</b>
-	 * for the whole partition rather than per block (the source open is a lazy {@code N5Utils.open}, so each block
-	 * still reads only the source chunks it needs). Each block is rebuilt from the (already updated) previous level
-	 * with the same per-block math as {@code N5DownsamplerSpark} so the result matches the rest of the pyramid, backing
-	 * up the original block before overwriting it.
+	 * Rebuilds a single pyramid block from the (already updated) previous level with the same per-block math as
+	 * {@code N5DownsamplerSpark}, so the result matches the rest of the pyramid. The original block is saved to the
+	 * no paint dataset before it is overwritten unless an earlier run already saved it.
 	 */
-	static void downsamplePartition(final Iterator<long[]> gridPositions,
-									final String n5Path,
-									final String backupPath,
-									final String fromDataset,
-									final String toDataset,
-									final DatasetAttributes toAttributes,
-									final int[] factors) {
-
-		LogUtilities.setupExecutorLog4j("downsample");
-
-		final CellGrid cellGrid = new CellGrid(toAttributes.getDimensions(), toAttributes.getBlockSize());
-
-		try (final N5Reader reader = openN5Reader(n5Path);
-			 final N5Writer writer = openN5Writer(n5Path);
-			 final N5Writer backupWriter = openN5Writer(backupPath)) {
-
-			final RandomAccessibleInterval<UnsignedByteType> source = N5Utils.open(reader, fromDataset);
-
-			int count = 0;
-			while (gridPositions.hasNext()) {
-				downsampleBlock(source, reader, writer, backupWriter, cellGrid,
-								gridPositions.next(), toDataset, toAttributes, factors);
-				count++;
-			}
-			LOG.info("downsamplePartition: re-downsampled {} {} block(s)", count, toDataset);
-		}
-	}
-
-	/** Re-downsamples a single block using the handles and source level already opened for the partition. */
-	private static void downsampleBlock(final RandomAccessibleInterval<UnsignedByteType> source,
-										final N5Reader reader,
-										final N5Writer writer,
-										final N5Writer backupWriter,
+	private static void downsampleBlock(final N5Writer n5,
 										final CellGrid cellGrid,
 										final long[] gridPosition,
+										final String fromDataset,
 										final String toDataset,
 										final DatasetAttributes toAttributes,
+										final String noPaintToDataset,
 										final int[] factors) {
 
 		final int n = toAttributes.getNumDimensions();
@@ -809,25 +837,49 @@ public class Wafer6061Inpainter {
 			targetSize[d] = cellDimensions[d];
 		}
 
+		// The source level is opened for each block (a lazy open, so only the source chunks this block needs are
+		// read). Because one task updates every affected block of a stack, a single open shared by all blocks would
+		// let its cell cache hold on to every chunk read so far.
+		final RandomAccessibleInterval<UnsignedByteType> source = N5Utils.open(n5, fromDataset);
 		final RandomAccessibleInterval<UnsignedByteType> sourceBlock = Views.offsetInterval(source, sourceMin, sourceSize);
 		final Img<UnsignedByteType> targetBlock = ArrayImgs.unsignedBytes(targetSize);
 		Downsample.downsample(sourceBlock, targetBlock, factors);
 
-		// back up the original block (if present) before overwriting.
-		final DataBlock<?> originalBlock = reader.readBlock(toDataset, toAttributes, gridPosition);
-		if (originalBlock != null) {
-			backupWriter.writeBlock(toDataset, toAttributes, originalBlock);
+		// save the original block (if present) before overwriting, unless an earlier run already saved it.
+		final DataBlock<?> savedOriginal = n5.readBlock(noPaintToDataset, toAttributes, gridPosition);
+		if (savedOriginal == null) {
+			final DataBlock<?> originalBlock = n5.readBlock(toDataset, toAttributes, gridPosition);
+			if (originalBlock != null) {
+				n5.writeBlock(noPaintToDataset, toAttributes, originalBlock);
+			}
 		}
 
 		// delete first so a block that became empty does not leave a stale remnant.
-		N5Utils.deleteBlock(targetBlock, writer, toDataset, gridPosition);
-		N5Utils.saveNonEmptyBlock(targetBlock, writer, toDataset, gridPosition, new UnsignedByteType());
+		N5Utils.deleteBlock(targetBlock, n5, toDataset, gridPosition);
+		N5Utils.saveNonEmptyBlock(targetBlock, n5, toDataset, gridPosition, new UnsignedByteType());
 		LOG.info("downsampleBlock: updated {} block {}", toDataset, Arrays.toString(gridPosition));
 	}
 
 	// ------------------------------------------------------------------------------------------------
 	// Helpers
 	// ------------------------------------------------------------------------------------------------
+
+	/** Parses the serial label from a stack name like {@code w61_s109_r00_gc_bc_par_cc_aso_3d_s3i} (109). */
+	static long inferSerial(final String stack) {
+		final Matcher matcher = SERIAL_IN_NAME.matcher(stack);
+		if (matcher.find()) {
+			return Long.parseLong(matcher.group(1));
+		}
+		throw new IllegalArgumentException("could not infer the serial from stack name '" + stack +
+										   "' because it does not start with w<wafer>_s<serial>_");
+	}
+
+	/** Maps a pixel level dataset (e.g. {@code <pixelGroup>/s2}) to its no paint dataset ({@code <noPaintGroup>/s2}). */
+	private static String toNoPaintDataset(final String levelDataset,
+										   final String pixelGroup,
+										   final String noPaintGroup) {
+		return noPaintGroup + levelDataset.substring(pixelGroup.length());
+	}
 
 	/** Returns the slab-axis position whose id_serial label equals {@code serial}, or -1 if none matches. */
 	static int findSlabPosition(final double[] idSerial, final long serial) {
@@ -850,8 +902,8 @@ public class Wafer6061Inpainter {
 
 	/**
 	 * Reads the neuroglancer {@code translate} (the stack bounding-box min in world pixels) from the multiscale group,
-	 * or returns null if it is absent. The render N5 export writes it on the group ({@code <dataset>}), not on
-	 * {@code s0} (s0 only carries a sub-pixel centering {@code transform}); callers fall back to the render stack bounds.
+	 * or returns null if it is absent. The render N5 export writes it on the group, not on {@code s0} (s0 only carries
+	 * a sub-pixel centering {@code transform}); callers fall back to the render stack bounds.
 	 */
 	private static double[] readGroupTranslate(final N5Reader n5, final String group) {
 		try {
@@ -865,12 +917,41 @@ public class Wafer6061Inpainter {
 		return null;
 	}
 
-	/** Opens an N5 reader for a tissue/backup container (explicit N5 format; local path or gs://). */
+	/**
+	 * Logs a warning if the group's {@code renderExport} metadata (written by render's N5 export) names a different
+	 * stack than the one being inpainted, since the tile positions are then read from a different stack than the
+	 * one that was exported.
+	 */
+	private static void warnIfExportedFromDifferentStack(final N5Reader n5,
+														 final String pixelGroup,
+														 final String stack) {
+		try {
+			final RenderExport export = n5.getAttribute(pixelGroup, "renderExport", RenderExport.class);
+			final String exportedStack = (export == null || export.runParameters == null) ?
+										 null : export.runParameters.stack;
+			if (exportedStack == null) {
+				LOG.warn("warnIfExportedFromDifferentStack: {} has no renderExport stack, assuming it was exported from {}",
+						 pixelGroup, stack);
+			} else if (! exportedStack.equals(stack)) {
+				LOG.warn("warnIfExportedFromDifferentStack: {} was exported from stack {} but tile positions are read from stack {}",
+						 pixelGroup, exportedStack, stack);
+			}
+		} catch (final Exception e) {
+			LOG.warn("warnIfExportedFromDifferentStack: could not read renderExport from {} ({})", pixelGroup, e.getMessage());
+		}
+	}
+
+	/** Reads the completion record a finished run wrote to the pixel group, or returns null if there is none. */
+	private static InpaintRecord readInpaintRecord(final N5Reader n5, final String pixelGroup) {
+		return n5.getAttribute(pixelGroup, INPAINT_ATTRIBUTE, InpaintRecord.class);
+	}
+
+	/** Opens an N5 reader for a tissue container (explicit N5 format; local path or gs://). */
 	private static N5Reader openN5Reader(final String path) {
 		return new N5Factory().openReader(StorageFormat.N5, path);
 	}
 
-	/** Opens an N5 writer for a tissue/backup container (explicit N5 format; local path or gs://). */
+	/** Opens an N5 writer for a tissue container (explicit N5 format; local path or gs://). */
 	private static N5Writer openN5Writer(final String path) {
 		return new N5Factory().openWriter(StorageFormat.N5, path);
 	}
@@ -897,53 +978,37 @@ public class Wafer6061Inpainter {
 	}
 
 	/**
-	 * Reads the render service coordinates (baseDataUrl / owner / project / stack) straight from the multiscale group's
-	 * {@code renderExport} metadata, written by render's N5 export (the same attributes.json that holds the pyramid
-	 * {@code scales} and {@code translate}). Fails fast when it is absent so the render target is never guessed.
-	 */
-	private static RenderTarget readRenderTarget(final N5Reader n5, final String group) {
-		final RenderExport export = n5.getAttribute(group, "renderExport", RenderExport.class);
-		if (export == null || export.runParameters == null || export.runParameters.renderWeb == null ||
-			export.runParameters.renderWeb.baseDataUrl == null || export.runParameters.stack == null) {
-			throw new IllegalArgumentException(
-					"N5 group " + group + " has no usable 'renderExport' metadata (need runParameters.renderWeb." +
-					"baseDataUrl/owner/project and runParameters.stack); this client reads the render service parameters from there");
-		}
-		final RenderExport.RenderWeb web = export.runParameters.renderWeb;
-		return new RenderTarget(web.baseDataUrl, web.owner, web.project, export.runParameters.stack);
-	}
-
-	/** Render service coordinates resolved from the group's {@code renderExport} metadata. */
-	static class RenderTarget {
-		final String baseDataUrl;
-		final String owner;
-		final String project;
-		final String stack;
-
-		RenderTarget(final String baseDataUrl, final String owner, final String project, final String stack) {
-			this.baseDataUrl = baseDataUrl;
-			this.owner = owner;
-			this.project = project;
-			this.stack = stack;
-		}
-	}
-
-	/**
-	 * Minimal GSON view of the group's {@code renderExport} attribute (only the render coordinates this client needs;
+	 * Minimal GSON view of the group's {@code renderExport} attribute (only the stack name is needed;
 	 * all other fields written by the export are ignored).
 	 */
 	private static class RenderExport {
 		RunParameters runParameters;
 
 		private static class RunParameters {
-			RenderWeb renderWeb;
 			String stack;
 		}
+	}
 
-		private static class RenderWeb {
-			String baseDataUrl;
-			String owner;
-			String project;
+	/** Completion record written to a stack's pixel group (as the {@value #INPAINT_ATTRIBUTE} attribute). */
+	private static class InpaintRecord {
+		String completedAt;
+		double maxRoiDistance;
+		String xlogPath;
+		String noPaintDataset;
+		int inpaintedS0BlockCount;
+
+		@SuppressWarnings("unused")
+		InpaintRecord() {
+		}
+
+		InpaintRecord(final InpaintParameters inpaint,
+					  final String noPaintDataset,
+					  final int inpaintedS0BlockCount) {
+			this.completedAt = Instant.now().toString();
+			this.maxRoiDistance = inpaint.maxRoiDistance;
+			this.xlogPath = inpaint.xlogPath;
+			this.noPaintDataset = noPaintDataset;
+			this.inpaintedS0BlockCount = inpaintedS0BlockCount;
 		}
 	}
 

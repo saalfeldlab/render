@@ -19,6 +19,7 @@ import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
 import org.janelia.render.client.parameter.BeamCorrectionParameters;
 import org.janelia.render.client.parameter.CreepCorrectionParameters;
 import org.janelia.render.client.parameter.FilterReplacementParameters;
+import org.janelia.render.client.parameter.InpaintParameters;
 import org.janelia.render.client.parameter.LayerAsTileParameters;
 import org.janelia.render.client.parameter.MFOVAsTileParameters;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
@@ -71,10 +72,12 @@ public class AlignmentPipelineParameters
     private final SofimaParameters sofima;
     private final StackRenameParameters stackRename;
     private final FilterReplacementParameters filterReplacement;
+    private final InpaintParameters inpaint;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -123,7 +126,8 @@ public class AlignmentPipelineParameters
                                        final TileRemovalSetup tileRemoval,
                                        final SofimaParameters sofima,
                                        final StackRenameParameters stackRename,
-                                       final FilterReplacementParameters filterReplacement) {
+                                       final FilterReplacementParameters filterReplacement,
+                                       final InpaintParameters inpaint) {
         this.multiProject = multiProject;
         this.pipelineStackGroups = pipelineStackGroups;
         this.pipelineSteps = pipelineSteps;
@@ -148,6 +152,7 @@ public class AlignmentPipelineParameters
         this.sofima = sofima;
         this.stackRename = stackRename;
         this.filterReplacement = filterReplacement;
+        this.inpaint = inpaint;
     }
 
     public MultiProjectParameters getMultiProject(final StackIdNamingGroup withNamingGroup) {
@@ -163,7 +168,6 @@ public class AlignmentPipelineParameters
         return pipelineStackGroups == null ? null : pipelineStackGroups.getAligned();
     }
 
-    @SuppressWarnings("unused")
     public StackIdNamingGroup getIntensityCorrectedNamingGroup() {
         return pipelineStackGroups == null ? null : pipelineStackGroups.getIntensityCorrected();
     }
@@ -262,6 +266,10 @@ public class AlignmentPipelineParameters
 
     public FilterReplacementParameters getFilterReplacement() {
         return filterReplacement;
+    }
+
+    public InpaintParameters getInpaint() {
+        return inpaint;
     }
 
     /**
