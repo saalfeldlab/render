@@ -105,6 +105,13 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	)
 	public boolean tetherCrossLayers = false;
 
+	@Parameter(
+			names = "--maxTilesPerSave",
+			description = "Save corrected tiles in one request when there are fewer than this many of them, " +
+					"otherwise save them with one request per z layer (default: 10000)"
+	)
+	public int maxTilesPerSave = 12000;
+
 
 	public void initDefaultValues() throws IllegalArgumentException {
 		this.zDistance.initDefaultValues();

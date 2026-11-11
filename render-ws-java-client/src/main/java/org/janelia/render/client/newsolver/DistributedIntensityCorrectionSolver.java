@@ -203,7 +203,7 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 			final Map<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.getModelMap();
 			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, solverSetup.intensityAdjust.numCoefficients);
 			addFilters(rtsc, idToFilterSpec);
-			if (rtsc.getTileCount() < 10000) {
+			if (rtsc.getTileCount() < solverSetup.intensityAdjust.maxTilesPerSave) {
 				renderDataClient.saveResolvedTiles(rtsc, solverSetup.targetStack.stack, null);
 			} else {
 				saveResolvedTilesByZ(renderDataClient, rtsc, solverSetup.targetStack.stack);
