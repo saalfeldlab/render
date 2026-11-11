@@ -127,8 +127,6 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 		} catch (final InterruptedException | ExecutionException e) {
 			throw new RuntimeException("Failed to compute intensity correction", e);
 		}
-		// a finally block with taskExecutor.shutdown() is not needed here because the try-with-resources close()
-		// shuts the executor down and waits for running tasks, but invokeAll has already waited for all of them
 
 		LOG.info("solveBlocksUsingThreadPool: exit, computed {} blocks", allItems.size());
 
