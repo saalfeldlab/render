@@ -34,8 +34,11 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -118,15 +121,14 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 		blockCollection.allBlocks().forEach(block -> workers.add(() -> createAndRunWorker(block, solverSetup)));
 
 		final ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> allItems = new ArrayList<>();
-		final ExecutorService taskExecutor = Executors.newFixedThreadPool(solverSetup.distributedSolve.threadsGlobal);
-		try {
+		try (final ExecutorService taskExecutor = Executors.newFixedThreadPool(solverSetup.distributedSolve.threadsGlobal)) {
 			for (final Future<List<BlockData<ArrayList<AffineModel1D>, ?>>> future : taskExecutor.invokeAll(workers))
 					allItems.addAll(future.get());
 		} catch (final InterruptedException | ExecutionException e) {
 			throw new RuntimeException("Failed to compute intensity correction", e);
-		} finally {
-			taskExecutor.shutdown();
 		}
+		// a finally block with taskExecutor.shutdown() is not needed here because the try-with-resources close()
+		// shuts the executor down and waits for running tasks, but invokeAll has already waited for all of them
 
 		LOG.info("solveBlocksUsingThreadPool: exit, computed {} blocks", allItems.size());
 
@@ -201,10 +203,41 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 			final Map<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.getModelMap();
 			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, solverSetup.intensityAdjust.numCoefficients);
 			addFilters(rtsc, idToFilterSpec);
-			renderDataClient.saveResolvedTiles(rtsc, solverSetup.targetStack.stack, null);
+			if (rtsc.getTileCount() < 10000) {
+				renderDataClient.saveResolvedTiles(rtsc, solverSetup.targetStack.stack, null);
+			} else {
+				saveResolvedTilesByZ(renderDataClient, rtsc, solverSetup.targetStack.stack);
+			}
 			if (solverSetup.targetStack.completeStack)
 				renderDataClient.setStackState(solverSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
 		}
+	}
+
+	/**
+	 * Saves the specified tiles to the specified stack with one request per z layer.
+	 * A single request for every tile in a large stack can be too big for the web service,
+	 * so the corrected tiles (which must be built for all layers together) are saved one layer at a time.
+	 * Each layer request is validated by the web service to only contain tiles with that layer's z.
+	 */
+	private static void saveResolvedTilesByZ(final RenderDataClient renderDataClient,
+											 final ResolvedTileSpecCollection rtsc,
+											 final String stack)
+			throws IOException {
+
+		final Map<Double, Set<String>> zToTileIds = new TreeMap<>();
+		for (final TileSpec tileSpec : rtsc.getTileSpecs()) {
+			zToTileIds.computeIfAbsent(tileSpec.getZ(), z -> new HashSet<>()).add(tileSpec.getTileId());
+		}
+
+		LOG.info("saveResolvedTilesByZ: saving {} tiles in {} layers to stack {}",
+				 rtsc.getTileCount(), zToTileIds.size(), stack);
+
+		for (final Map.Entry<Double, Set<String>> entry : zToTileIds.entrySet()) {
+			final ResolvedTileSpecCollection layerTiles = rtsc.copyAndRetainTileSpecs(entry.getValue());
+			renderDataClient.saveResolvedTiles(layerTiles, stack, entry.getKey());
+		}
+
+		LOG.info("saveResolvedTilesByZ: saved {} layers to stack {}", zToTileIds.size(), stack);
 	}
 
 	private static ArrayList<AffineModel1D> integrateGlobalTranslation(final ArrayList<AffineModel1D> localModels, final TranslationModel1D globalModel) {
@@ -224,15 +257,16 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 		if (tiledModels.isEmpty() || tiledModels.size() != weights.size())
 			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
 
-		if (tiledModels.size() == 1)
-			return tiledModels.get(0);
+		if (tiledModels.size() == 1) {
+			return tiledModels.getFirst();
+		}
 
 		// normalize weights
 		final double sumWeights = weights.stream().mapToDouble(v -> v).sum();
 		final double[] normalizedWeights = weights.stream().mapToDouble(v -> v / sumWeights).toArray();
 
 		final int nCoefficients = 2;
-		final int nModelsPerTile = tiledModels.get(0).size();
+		final int nModelsPerTile = tiledModels.getFirst().size();
 		final double[] c = new double[nCoefficients];
 		final List<double[]> finalCoefficients = new ArrayList<>();
 		for (int i = 0; i < nModelsPerTile; ++i)
@@ -264,8 +298,9 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 		if (models.isEmpty() || models.size() != weights.size())
 			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
 
-		if (models.size() == 1)
-			return models.get(0);
+		if (models.size() == 1) {
+			return models.getFirst();
+		}
 
 		final double randomSample = ThreadLocalRandom.current().nextDouble();
 		final int i = getRandomIndex(weights, randomSample);
@@ -316,11 +351,9 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 	}
 
 	private static Filter checkAndMergeFilters(final Filter oldFilter, final Filter newFilter) {
-		if (oldFilter instanceof LinearIntensityMap8BitFilter
-				&& newFilter instanceof LinearIntensityMap8BitFilter) {
-			final LinearIntensityMap8BitFilter oldLinearFilter = (LinearIntensityMap8BitFilter) oldFilter;
-			final LinearIntensityMap8BitFilter newLinearFilter = (LinearIntensityMap8BitFilter) newFilter;
-			newLinearFilter.after(oldLinearFilter);
+		if (oldFilter instanceof final LinearIntensityMap8BitFilter oldLinearFilter
+            && newFilter instanceof final LinearIntensityMap8BitFilter newLinearFilter) {
+            newLinearFilter.after(oldLinearFilter);
 			return newLinearFilter;
 		} else {
 			return new CompositeFilter(oldFilter, newFilter);
