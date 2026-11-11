@@ -107,10 +107,9 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 
 	@Parameter(
 			names = "--maxTilesPerSave",
-			description = "Save corrected tiles in one request when there are fewer than this many of them, " +
-					"otherwise save them with one request per z layer (default: 10000)"
+			description = "Maximum number of corrected tiles to save to the web service in one request (default: 12000)"
 	)
-	public int maxTilesPerSave = 12000;
+	public int maxTilesPerSave = 8000;
 
 
 	public void initDefaultValues() throws IllegalArgumentException {

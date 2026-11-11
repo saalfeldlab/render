@@ -33,12 +33,12 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -201,41 +201,59 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 			final Map<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.getModelMap();
 			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, solverSetup.intensityAdjust.numCoefficients);
 			addFilters(rtsc, idToFilterSpec);
-			if (rtsc.getTileCount() < solverSetup.intensityAdjust.maxTilesPerSave) {
-				renderDataClient.saveResolvedTiles(rtsc, solverSetup.targetStack.stack, null);
-			} else {
-				saveResolvedTilesByZ(renderDataClient, rtsc, solverSetup.targetStack.stack);
-			}
+			saveResolvedTilesInBatches(renderDataClient,
+									   rtsc,
+									   solverSetup.targetStack.stack,
+									   solverSetup.intensityAdjust.maxTilesPerSave);
 			if (solverSetup.targetStack.completeStack)
 				renderDataClient.setStackState(solverSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
 		}
 	}
 
 	/**
-	 * Saves the specified tiles to the specified stack with one request per z layer.
+	 * Saves the specified tiles to the specified stack with requests of at most maxTilesPerSave tiles.
 	 * A single request for every tile in a large stack can be too big for the web service,
-	 * so the corrected tiles (which must be built for all layers together) are saved one layer at a time.
-	 * Each layer request is validated by the web service to only contain tiles with that layer's z.
+	 * so the corrected tiles (which must be built for all layers together) are saved in batches.
+	 * Tiles are sorted by z (then tile id) before batching so that each batch covers a contiguous z range.
+	 * Batches can span layers, so they are saved with a null z.
 	 */
-	private static void saveResolvedTilesByZ(final RenderDataClient renderDataClient,
-											 final ResolvedTileSpecCollection rtsc,
-											 final String stack)
+	private static void saveResolvedTilesInBatches(final RenderDataClient renderDataClient,
+												   final ResolvedTileSpecCollection rtsc,
+												   final String stack,
+												   final int maxTilesPerSave)
 			throws IOException {
 
-		final Map<Double, Set<String>> zToTileIds = new TreeMap<>();
-		for (final TileSpec tileSpec : rtsc.getTileSpecs()) {
-			zToTileIds.computeIfAbsent(tileSpec.getZ(), z -> new HashSet<>()).add(tileSpec.getTileId());
+		if (maxTilesPerSave < 1) {
+			throw new IllegalArgumentException("maxTilesPerSave must be positive but is " + maxTilesPerSave);
 		}
 
-		LOG.info("saveResolvedTilesByZ: saving {} tiles in {} layers to stack {}",
-				 rtsc.getTileCount(), zToTileIds.size(), stack);
+		final int tileCount = rtsc.getTileCount();
 
-		for (final Map.Entry<Double, Set<String>> entry : zToTileIds.entrySet()) {
-			final ResolvedTileSpecCollection layerTiles = rtsc.copyAndRetainTileSpecs(entry.getValue());
-			renderDataClient.saveResolvedTiles(layerTiles, stack, entry.getKey());
+		if (tileCount <= maxTilesPerSave) {
+			LOG.info("saveResolvedTilesInBatches: saving {} tiles to stack {} in one request", tileCount, stack);
+			renderDataClient.saveResolvedTiles(rtsc, stack, null);
+			return;
 		}
 
-		LOG.info("saveResolvedTilesByZ: saved {} layers to stack {}", zToTileIds.size(), stack);
+		final List<TileSpec> sortedTileSpecs = new ArrayList<>(rtsc.getTileSpecs());
+		sortedTileSpecs.sort(Comparator.comparingDouble(TileSpec::getZ).thenComparing(TileSpec::getTileId));
+
+		final int batchCount = (tileCount + maxTilesPerSave - 1) / maxTilesPerSave;
+
+		LOG.info("saveResolvedTilesInBatches: saving {} tiles to stack {} in {} batches of at most {} tiles",
+				 tileCount, stack, batchCount, maxTilesPerSave);
+
+		for (int fromIndex = 0; fromIndex < tileCount; fromIndex += maxTilesPerSave) {
+			final int toIndex = Math.min(fromIndex + maxTilesPerSave, tileCount);
+			final Set<String> batchTileIds = new HashSet<>();
+			for (final TileSpec tileSpec : sortedTileSpecs.subList(fromIndex, toIndex)) {
+				batchTileIds.add(tileSpec.getTileId());
+			}
+			final ResolvedTileSpecCollection batchTiles = rtsc.copyAndRetainTileSpecs(batchTileIds);
+			renderDataClient.saveResolvedTiles(batchTiles, stack, null);
+		}
+
+		LOG.info("saveResolvedTilesInBatches: saved {} batches to stack {}", batchCount, stack);
 	}
 
 	private static ArrayList<AffineModel1D> integrateGlobalTranslation(final ArrayList<AffineModel1D> localModels, final TranslationModel1D globalModel) {
