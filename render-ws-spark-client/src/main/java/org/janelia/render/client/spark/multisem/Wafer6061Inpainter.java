@@ -957,12 +957,12 @@ public class Wafer6061Inpainter
 					final String noPaintDataset = toNoPaintDataset(levelDataset, pixelGroup, noPaintGroup);
 					if (n5.datasetExists(noPaintDataset)) {
 						existingCount++;
-						LOG.info("createNoPaintDatasets: {} already exists", stackId.toDevString());
+						LOG.info("createNoPaintDatasets: {} already exists", noPaintDataset);
 					} else {
 						final DatasetAttributes attributes = n5.getDatasetAttributes(levelDataset);
 						createWithRateLimitRetries(() -> n5.createDataset(noPaintDataset, attributes), noPaintDataset);
 						createdCount++;
-						LOG.info("createNoPaintDatasets: created {}", stackId.toDevString());
+						LOG.info("createNoPaintDatasets: created {}", noPaintDataset);
 					}
 				}
 			}
