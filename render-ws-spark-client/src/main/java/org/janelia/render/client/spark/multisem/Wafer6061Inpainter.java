@@ -317,13 +317,14 @@ public class Wafer6061Inpainter
 			throws IOException {
 
 		final String stack = stackId.getStack();
+		final String stackDevString = stackId.toDevString();
 		final long serial = inferSerial(stack);
 		final String pixelGroup = inpaint.getPixelDataset(stackId);
 		final String noPaintGroup = inpaint.getNoPaintDataset(stackId);
 		final String maskDataset = inpaint.getMaskS0Dataset(stackId);
 
-		LOG.info("inpaintStack: entry, stack={}, serial={}, pixelGroup={}, maskDataset={}, noPaintGroup={}",
-				 stackId.toDevString(), serial, pixelGroup, maskDataset, noPaintGroup);
+		LOG.info("inpaintStack: entry, {}, serial={}, pixelGroup={}, maskDataset={}, noPaintGroup={}",
+				 stackDevString, serial, pixelGroup, maskDataset, noPaintGroup);
 
 		// Read the tissue level metadata and the world->voxel offset, and discover the pyramid levels.
 		final double[] worldToVoxel;
@@ -358,14 +359,14 @@ public class Wafer6061Inpainter
 				downsampleFactors = readDownsamplingFactors(n5, pixelGroup, 3);
 			}
 		}
-		LOG.info("inpaintStack: world->voxel translate={}, pyramid levels={}, downsampleFactors={}",
-				 Arrays.toString(worldToVoxel), levels, Arrays.toString(downsampleFactors));
+		LOG.info("inpaintStack: {}, world->voxel translate={}, pyramid levels={}, downsampleFactors={}",
+				 stackDevString, Arrays.toString(worldToVoxel), levels, Arrays.toString(downsampleFactors));
 
 		// Load the (small) ROI point cloud: positions from the render stack, distances from the xlog.
 		final RenderDataClient renderClient = new RenderDataClient(baseDataUrl, stackId.getOwner(), stackId.getProject());
 		final PointCloud cloud = loadPointCloud(inpaint.xlogPath, serial, pixelGroup, renderClient, stack, worldToVoxel);
-		LOG.info("inpaintStack: loaded {} ROI reference points for serial {} from {}",
-				 cloud.size(), serial, stackId.toDevString());
+		LOG.info("inpaintStack: {}, loaded {} ROI reference points for serial {} from {}",
+				 stackDevString, cloud.size(), serial, stackId.toDevString());
 
 		// The no paint datasets for every level were already created on the driver (see createNoPaintDatasets).
 
@@ -394,7 +395,7 @@ public class Wafer6061Inpainter
 
 		final String summary = stackId.toDevString() + ": " + modifiedS0.size() + " s0 block(s) " +
 							   (inpaint.dryRun ? "would be inpainted (dry run)" : "inpainted");
-		LOG.info("inpaintStack: exit, {}", summary);
+		LOG.info("inpaintStack: exit, {}, {}", stackDevString, summary);
 		return summary;
 	}
 
@@ -454,8 +455,8 @@ public class Wafer6061Inpainter
 					distBySfovMfov[s][m] = dra.setPositionAndGet(pos).get();
 				}
 			}
-			LOG.info("loadPointCloud: serial {} -> slab position {}, distance_roi grid is {} sfov x {} mfov",
-					 serial, slabPosition, nSfov, nMfov);
+			LOG.info("loadPointCloud: stack {}, serial {} -> slab position {}, distance_roi grid is {} sfov x {} mfov",
+					 stack, serial, slabPosition, nSfov, nMfov);
 		}
 		final int nSfov = distBySfovMfov.length;
 		final int nMfov = nSfov > 0 ? distBySfovMfov[0].length : 0;
@@ -514,8 +515,8 @@ public class Wafer6061Inpainter
 											   " could be matched to a finite xlog distance_roi (fetched " + tiles.size() +
 											   " tiles; " + noDistance + " had NaN distance, " + outOfRange + " had out-of-range mfov/sfov)");
 		}
-		LOG.info("loadPointCloud: matched {} of {} render tiles (z {}) to distance_roi; dropped {} NaN-distance, {} out-of-range; world->voxel offset ({}, {})",
-				 xs.size(), tiles.size(), firstZ, noDistance, outOfRange, offsetX, offsetY);
+		LOG.info("loadPointCloud: stack {}, matched {} of {} render tiles (z {}) to distance_roi; dropped {} NaN-distance, {} out-of-range; world->voxel offset ({}, {})",
+				 stack, xs.size(), tiles.size(), firstZ, noDistance, outOfRange, offsetX, offsetY);
 		return new PointCloud(toArray(xs), toArray(ys), toArray(ds));
 	}
 
@@ -898,10 +899,12 @@ public class Wafer6061Inpainter
 					final String noPaintDataset = toNoPaintDataset(levelDataset, pixelGroup, noPaintGroup);
 					if (n5.datasetExists(noPaintDataset)) {
 						existingCount++;
+						LOG.info("createNoPaintDatasets: {} already exists", stackId.toDevString());
 					} else {
 						final DatasetAttributes attributes = n5.getDatasetAttributes(levelDataset);
 						createWithRateLimitRetries(() -> n5.createDataset(noPaintDataset, attributes), noPaintDataset);
 						createdCount++;
+						LOG.info("createNoPaintDatasets: created {}", stackId.toDevString());
 					}
 				}
 			}
