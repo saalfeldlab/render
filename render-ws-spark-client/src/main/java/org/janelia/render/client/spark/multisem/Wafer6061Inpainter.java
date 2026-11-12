@@ -232,6 +232,10 @@ public class Wafer6061Inpainter
 			return;
 		}
 
+		if (! inpaint.dryRun) {
+			createNoPaintDatasets(inpaint, stacksToInpaint);
+		}
+
 		LOG.info("inpaintStacks: distributing inpainting of {} stack(s) with parallelism {} (defaultParallelism={}), " +
 				 "skipped {} already inpainted stack(s)",
 				 stacksToInpaint.size(), stacksToInpaint.size(), sparkContext.defaultParallelism(),
@@ -363,17 +367,7 @@ public class Wafer6061Inpainter
 		LOG.info("inpaintStack: loaded {} ROI reference points for serial {} from {}",
 				 cloud.size(), serial, stackId.toDevString());
 
-		// Create the no paint datasets for every level that might receive a saved original.
-		if (! inpaint.dryRun) {
-			try (final N5Writer n5 = openN5Writer(inpaint.n5Path)) {
-				for (final String levelDataset : levels) {
-					final String noPaintDataset = toNoPaintDataset(levelDataset, pixelGroup, noPaintGroup);
-					if (! n5.datasetExists(noPaintDataset)) {
-						n5.createDataset(noPaintDataset, levelAttributes.get(levelDataset));
-					}
-				}
-			}
-		}
+		// The no paint datasets for every level were already created on the driver (see createNoPaintDatasets).
 
 		final String s0Dataset = levels.getFirst();
 		final List<long[]> modifiedS0 = inpaintS0Blocks(stack,
@@ -872,6 +866,91 @@ public class Wafer6061Inpainter
 		}
 		throw new IllegalArgumentException("could not infer the serial from stack name '" + stack +
 										   "' because it does not start with w<wafer>_s<serial>_");
+	}
+
+	/**
+	 * Creates the no paint dataset for every pyramid level of every specified stack, one dataset at a time on the
+	 * driver, so that the executors only write blocks into existing datasets.
+	 * <p>
+	 * On GCS, {@code createDataset} writes a directory marker object for every component of the dataset's path, so
+	 * shared ancestors like the export root are rewritten for each dataset. When every Spark task created its own
+	 * datasets at the same time, those rewrites exceeded GCS's per-object mutation rate limit (about one per second)
+	 * and the 429 responses were not retried by the GCS client. Creating them serially and retrying rate limited
+	 * creates with backoff avoids that.
+	 */
+	private static void createNoPaintDatasets(final InpaintParameters inpaint,
+											  final List<StackId> stackIds)
+			throws IOException {
+
+		LOG.info("createNoPaintDatasets: entry, creating no paint datasets for {} stack(s)", stackIds.size());
+
+		int createdCount = 0;
+		int existingCount = 0;
+		try (final N5Writer n5 = openN5Writer(inpaint.n5Path)) {
+			for (final StackId stackId : stackIds) {
+				final String pixelGroup = inpaint.getPixelDataset(stackId);
+				final String noPaintGroup = inpaint.getNoPaintDataset(stackId);
+				for (int scale = 0; ; scale++) {
+					final String levelDataset = pixelGroup + "/s" + scale;
+					if (! n5.datasetExists(levelDataset)) {
+						break;
+					}
+					final String noPaintDataset = toNoPaintDataset(levelDataset, pixelGroup, noPaintGroup);
+					if (n5.datasetExists(noPaintDataset)) {
+						existingCount++;
+					} else {
+						final DatasetAttributes attributes = n5.getDatasetAttributes(levelDataset);
+						createWithRateLimitRetries(() -> n5.createDataset(noPaintDataset, attributes), noPaintDataset);
+						createdCount++;
+					}
+				}
+			}
+		}
+
+		LOG.info("createNoPaintDatasets: exit, created {} and found {} existing no paint dataset(s)",
+				 createdCount, existingCount);
+	}
+
+	/**
+	 * Runs the specified create, retrying with exponential backoff (2s, 4s, ... up to 64s, about 4 minutes in
+	 * total) while it fails because of a GCS rate limit. Any other failure is thrown immediately.
+	 */
+	private static void createWithRateLimitRetries(final Runnable create,
+												   final String path)
+			throws IOException {
+		final int maxRetries = 7;
+		long delayMs = 2000;
+		for (int retry = 0; ; retry++) {
+			try {
+				create.run();
+				return;
+			} catch (final RuntimeException e) {
+				if ((retry >= maxRetries) || (! isRateLimitError(e))) {
+					throw e;
+				}
+				LOG.warn("createWithRateLimitRetries: rate limited creating {}, retry {} of {} in {}ms",
+						 path, retry + 1, maxRetries, delayMs);
+				try {
+					Thread.sleep(delayMs);
+				} catch (final InterruptedException ie) {
+					Thread.currentThread().interrupt();
+					throw new IOException("interrupted while waiting to retry create of " + path, ie);
+				}
+				delayMs *= 2;
+			}
+		}
+	}
+
+	/** Returns true if the specified exception or any of its causes is a GCS 429 rate limit error. */
+	private static boolean isRateLimitError(final Throwable throwable) {
+		for (Throwable t = throwable; t != null; t = t.getCause()) {
+			final String message = t.getMessage();
+			if ((message != null) &&
+				(message.contains("429") || message.contains("rateLimitExceeded") || message.contains("rate limit"))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** Maps a pixel level dataset (e.g. {@code <pixelGroup>/s2}) to its no paint dataset ({@code <noPaintGroup>/s2}). */

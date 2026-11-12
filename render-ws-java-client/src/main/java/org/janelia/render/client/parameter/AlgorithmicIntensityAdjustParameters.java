@@ -101,13 +101,13 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 			description = "If set, cross-layer coefficient tiles are only tethered at pixels whose intensities already " +
 					"coincide (matches with a non-zero shift are dropped). This smooths intensities across z without " +
 					"introducing correction on top of the tether, avoiding systematically wrong matches at " +
-					"tissue-to-resin transitions in z. Forces pixel-by-pixel matching. Default: false."
+					"tissue-to-resin transitions in z. Forces pixel-by-pixel matching."
 	)
 	public boolean tetherCrossLayers = false;
 
 	@Parameter(
 			names = "--maxTilesPerSave",
-			description = "Maximum number of corrected tiles to save to the web service in one request (default: 12000)"
+			description = "Maximum number of corrected tiles to save to the web service in one request"
 	)
 	public int maxTilesPerSave = 8000;
 
