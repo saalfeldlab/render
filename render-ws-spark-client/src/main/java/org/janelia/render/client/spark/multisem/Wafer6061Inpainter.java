@@ -378,7 +378,8 @@ public class Wafer6061Inpainter
 														levelAttributes.get(s0Dataset),
 														maskDataset,
 														toNoPaintDataset(s0Dataset, pixelGroup, noPaintGroup),
-														cloud);
+														cloud,
+														worldToVoxel);
 
 		if ((! inpaint.dryRun) && (! modifiedS0.isEmpty()) && (levels.size() > 1)) {
 			updatePyramid(inpaint.n5Path, pixelGroup, noPaintGroup, levels, levelAttributes, modifiedS0,
@@ -580,7 +581,8 @@ public class Wafer6061Inpainter
 												final DatasetAttributes s0Attributes,
 												final String maskDataset,
 												final String noPaintS0Dataset,
-												final PointCloud cloud) {
+												final PointCloud cloud,
+												final double[] worldToVoxel) {
 
 		final List<Grid.Block> s0Blocks = Grid.create(s0Attributes.getDimensions(), s0Attributes.getBlockSize());
 
@@ -665,6 +667,7 @@ public class Wafer6061Inpainter
 					N5Utils.saveBlock(result.inpainted, writer, s0Dataset, s0Attributes, block.gridPosition);
 				}
 				logDecision(stack, gridX, gridY, "inpainted", result.minChangedLayer, roiDistance);
+				logInpaintedLocation(stack, block, result, worldToVoxel);
 			}
 			LOG.info("inpaintS0Blocks: summary for {}: considered={}, nearRoi(<{}um)={}, present={}, inpainted={} (previously inpainted={})",
 					 stack, s0Blocks.size(), inpaint.maxRoiDistance, nearRoi, present, modified.size(),
@@ -683,6 +686,58 @@ public class Wafer6061Inpainter
 									final int minLayer, final double roiDistance) {
 		LOG.info("blockDecision stack={} gridX={} gridY={} decision={} minLayer={} roiDistance={}",
 				 stack, gridX, gridY, decision, minLayer, roiDistance);
+	}
+
+	/**
+	 * Logs one greppable {@code inpaintedLocation ...} line with where an inpainted block's changed pixels are, so
+	 * they can be reviewed in neuroglancer. Coordinates are given both as s0 voxels (the export's index space) and
+	 * as render world pixels (voxel + the group's neuroglancer {@code translate}). The world values are "n/a" when
+	 * the group has no translate. In a dry run the location is where the block would be inpainted.
+	 */
+	private static void logInpaintedLocation(final String stack,
+											 final Grid.Block block,
+											 final InpaintResult result,
+											 final double[] worldToVoxel) {
+		final long[] voxelMin = new long[3];
+		final long[] voxelMax = new long[3];
+		final long[] voxelCenter = new long[3];
+		for (int d = 0; d < 3; d++) {
+			voxelMin[d] = block.offset[d] + result.changedMin[d];
+			voxelMax[d] = block.offset[d] + result.changedMax[d];
+			voxelCenter[d] = (voxelMin[d] + voxelMax[d]) / 2;
+		}
+		LOG.info("inpaintedLocation stack={} voxelCenter={} voxelMin={} voxelMax={} worldCenter={} worldMin={} worldMax={} changedPixels={} block={}",
+				 stack,
+				 formatXyz(voxelCenter),
+				 formatXyz(voxelMin),
+				 formatXyz(voxelMax),
+				 formatWorldXyz(voxelCenter, worldToVoxel),
+				 formatWorldXyz(voxelMin, worldToVoxel),
+				 formatWorldXyz(voxelMax, worldToVoxel),
+				 result.changedPixelCount,
+				 formatXyz(block.gridPosition));
+	}
+
+	/** Formats a voxel position as {@code (x,y,z)}. */
+	private static String formatXyz(final long[] xyz) {
+		return "(" + xyz[0] + "," + xyz[1] + "," + xyz[2] + ")";
+	}
+
+	/**
+	 * Formats a voxel position as world {@code (x,y,z)} (rounded to whole pixels) by adding the specified translate.
+	 * A translate with only x and y leaves z as the voxel z. Returns "n/a" when there is no translate.
+	 */
+	private static String formatWorldXyz(final long[] voxel,
+										 final double[] worldToVoxel) {
+		if (worldToVoxel == null) {
+			return "n/a";
+		}
+		final long[] world = new long[3];
+		for (int d = 0; d < 3; d++) {
+			final double offset = d < worldToVoxel.length ? worldToVoxel[d] : 0.0;
+			world[d] = Math.round(voxel[d] + offset);
+		}
+		return formatXyz(world);
 	}
 
 	/**
@@ -714,8 +769,9 @@ public class Wafer6061Inpainter
 		final Img<UnsignedByteType> inpainted = ArrayImgs.unsignedBytes(blockDimensions);
 		final Cursor<UnsignedByteType> cursor = inpainted.localizingCursor();
 		final long[] local = new long[3];
-		boolean changed = false;
-		int minChangedLayer = Integer.MAX_VALUE;
+		long changedPixelCount = 0;
+		final long[] changedMin = { Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE };
+		final long[] changedMax = { Long.MIN_VALUE, Long.MIN_VALUE, Long.MIN_VALUE };
 		while (cursor.hasNext()) {
 			final UnsignedByteType target = cursor.next();
 			cursor.localize(local);
@@ -726,17 +782,19 @@ public class Wafer6061Inpainter
 				value = original;
 			} else {
 				value = zAverage(tissueAccess, local, 0, zMax);
+				// zAverage moves local[2] while reading neighbors but restores it before returning
 				if (value != original) {
-					changed = true;
-					if (local[2] < minChangedLayer) {
-						minChangedLayer = (int) local[2];
+					changedPixelCount++;
+					for (int d = 0; d < 3; d++) {
+						changedMin[d] = Math.min(changedMin[d], local[d]);
+						changedMax[d] = Math.max(changedMax[d], local[d]);
 					}
 				}
 			}
 			target.set(value);
 		}
 
-		return new InpaintResult(inpainted, changed, changed ? minChangedLayer : -1);
+		return new InpaintResult(inpainted, changedPixelCount, changedMin, changedMax);
 	}
 
 	/** Average of the tissue in the z-1 and z+1 sections, copying the single neighbor at the volume z-boundary. */
@@ -1094,16 +1152,28 @@ public class Wafer6061Inpainter
 		}
 	}
 
-	/** Result of inpainting one block: the (block-sized) inpainted image and whether any pixel changed. */
+	/**
+	 * Result of inpainting one block: the (block-sized) inpainted image, whether any pixel changed, and the
+	 * block-local bounding box and count of the changed pixels.
+	 */
 	static class InpaintResult {
 		final Img<UnsignedByteType> inpainted;
 		final boolean changed;
 		final int minChangedLayer; // minimal z-layer with an inpainted (changed) pixel, or -1 when nothing changed
+		final long changedPixelCount;
+		final long[] changedMin; // block-local min x,y,z of the changed pixels, or null when nothing changed
+		final long[] changedMax; // block-local max x,y,z of the changed pixels, or null when nothing changed
 
-		InpaintResult(final Img<UnsignedByteType> inpainted, final boolean changed, final int minChangedLayer) {
+		InpaintResult(final Img<UnsignedByteType> inpainted,
+					  final long changedPixelCount,
+					  final long[] changedMin,
+					  final long[] changedMax) {
 			this.inpainted = inpainted;
-			this.changed = changed;
-			this.minChangedLayer = minChangedLayer;
+			this.changed = changedPixelCount > 0;
+			this.minChangedLayer = this.changed ? (int) changedMin[2] : -1;
+			this.changedPixelCount = changedPixelCount;
+			this.changedMin = this.changed ? changedMin : null;
+			this.changedMax = this.changed ? changedMax : null;
 		}
 	}
 
