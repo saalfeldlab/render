@@ -394,9 +394,9 @@ public class Wafer6061Inpainter
 			}
 		}
 
-		final String summary = stackId.toDevString() + ": " + modifiedS0.size() + " s0 block(s) " +
+		final String summary = stackDevString + ": " + modifiedS0.size() + " s0 block(s) " +
 							   (inpaint.dryRun ? "would be inpainted (dry run)" : "inpainted");
-		LOG.info("inpaintStack: exit, {}, {}", stackDevString, summary);
+		LOG.info("inpaintStack: exit {}", summary);
 		return summary;
 	}
 
