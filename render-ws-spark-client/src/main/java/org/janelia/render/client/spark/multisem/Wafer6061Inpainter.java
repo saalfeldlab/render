@@ -8,6 +8,7 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -400,8 +401,12 @@ public class Wafer6061Inpainter
 			final List<InpaintedLocation> inpaintedLocations = InpaintedLocation.mergeAdjacentLocations(outcome.locations);
 			LOG.info("inpaintStack: {}, merged {} per-block inpainted location(s) into {} location(s)",
 					 stackDevString, outcome.locations.size(), inpaintedLocations.size());
+
+			// most changed pixels first, so a truncated list still has the largest inpainted areas
+			inpaintedLocations.sort(InpaintedLocation.MOST_CHANGED_PIXELS_FIRST);
+
 			if (inpaintedLocations.size() > MAX_RECORDED_LOCATIONS) {
-				LOG.warn("inpaintStack: {}, only saving the first {} of {} inpainted locations in the {} attribute " +
+				LOG.warn("inpaintStack: {}, only saving the {} largest of {} inpainted locations in the {} attribute " +
 						 "(see the inpaintedLocation log lines for all of them)",
 						 stackDevString, MAX_RECORDED_LOCATIONS, inpaintedLocations.size(), INPAINT_ATTRIBUTE);
 			}
@@ -1156,9 +1161,9 @@ public class Wafer6061Inpainter
 		String noPaintDataset;
 		int inpaintedS0BlockCount;
 		// inpaintedLocationCount is the actual number of inpainted locations, while inpaintedLocations only holds the
-		// first MAX_RECORDED_LOCATIONS of them in z order (null in records written before locations were added),
-		// so the list is truncated when it is shorter than the count. The count and flag are declared before the
-		// list so they are written before it, where they are easy to see.
+		// MAX_RECORDED_LOCATIONS largest of them, most changed pixels first (null in records written before locations
+		// were added), so the list is truncated when it is shorter than the count. The count and flag are declared
+		// before the list so they are written before it, where they are easy to see.
 		int inpaintedLocationCount;
 		boolean inpaintedLocationsTruncated;
 		List<InpaintedLocation> inpaintedLocations;
@@ -1190,6 +1195,17 @@ public class Wafer6061Inpainter
 	 * inpainted locations can be reviewed in neuroglancer.
 	 */
 	private static class InpaintedLocation {
+
+		/**
+		 * Orders locations by changed pixel count (most first), then by voxel area (largest first), then by
+		 * z, y, and x so that the order is the same on every run.
+		 */
+		static final Comparator<InpaintedLocation> MOST_CHANGED_PIXELS_FIRST =
+				Comparator.comparingLong((InpaintedLocation l) -> l.changedPixels).reversed()
+						.thenComparing(Comparator.comparingLong(InpaintedLocation::getVoxelArea).reversed())
+						.thenComparingLong(l -> l.voxelMin[2])
+						.thenComparingLong(l -> l.voxelMin[1])
+						.thenComparingLong(l -> l.voxelMin[0]);
 
 		List<long[]> blocks; // grid positions of the s0 blocks the location covers (more than one after merging)
 		long[] voxelMin;     // min x,y,z of the changed pixels (min z == max z, one layer)
@@ -1240,6 +1256,11 @@ public class Wafer6061Inpainter
 				}
 			}
 			return true;
+		}
+
+		/** @return number of voxels in this location's x,y box (it is always one layer deep). */
+		long getVoxelArea() {
+			return (voxelMax[0] - voxelMin[0] + 1) * (voxelMax[1] - voxelMin[1] + 1);
 		}
 
 		/** Grows this location to also cover the other one. */
