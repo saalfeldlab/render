@@ -2,6 +2,7 @@ package org.janelia.render.client.spark.multisem;
 
 
 import com.beust.jcommander.ParametersDelegate;
+import com.google.gson.JsonElement;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -125,6 +126,10 @@ public class Wafer6061Inpainter
 	 */
 	private static final int MAX_RECORDED_LOCATIONS = 1000;
 
+	/** Multiscale group attributes written by the render export (see NeuroglancerAttributes.write). */
+	private static final List<String> NEUROGLANCER_GROUP_ATTRIBUTE_KEYS =
+			List.of("axes", "ordering", "units", "scales", "pixelResolution", "translate");
+
 	private static final Logger LOG = LoggerFactory.getLogger(Wafer6061Inpainter.class);
 
 	public static class Parameters extends CommandLineParameters {
@@ -234,6 +239,10 @@ public class Wafer6061Inpainter
 		for (final StackId stackId : completedStacks) {
 			LOG.info("inpaintStacks: skipping {} because {} has the '{}' attribute from an earlier run",
 					 stackId.toDevString(), inpaint.getPixelDataset(stackId), INPAINT_ATTRIBUTE);
+		}
+
+		if ((! inpaint.dryRun) && (! completedStacks.isEmpty())) {
+			addMissingNoPaintNeuroglancerAttributes(inpaint, completedStacks);
 		}
 
 		if (stacksToInpaint.isEmpty()) {
@@ -989,11 +998,73 @@ public class Wafer6061Inpainter
 						LOG.info("createNoPaintDatasets: created {}", noPaintDataset);
 					}
 				}
+				copyNeuroglancerAttributes(n5, pixelGroup, noPaintGroup);
 			}
 		}
 
 		LOG.info("createNoPaintDatasets: exit, created {} and found {} existing no paint dataset(s)",
 				 createdCount, existingCount);
+	}
+
+	/**
+	 * Adds the neuroglancer multiscale attributes to the no paint groups of already inpainted stacks that were
+	 * inpainted before {@link #createNoPaintDatasets} copied them, so those groups also open as multiscale volumes.
+	 * Stacks without a no paint group, or whose no paint group already has the attributes, are left alone.
+	 */
+	private static void addMissingNoPaintNeuroglancerAttributes(final InpaintParameters inpaint,
+																final List<StackId> stackIds) {
+		int updatedCount = 0;
+		try (final N5Writer n5 = openN5Writer(inpaint.n5Path)) {
+			for (final StackId stackId : stackIds) {
+				final String noPaintGroup = inpaint.getNoPaintDataset(stackId);
+				if (n5.exists(noPaintGroup) && (n5.getAttribute(noPaintGroup, "scales", JsonElement.class) == null)) {
+					copyNeuroglancerAttributes(n5, inpaint.getPixelDataset(stackId), noPaintGroup);
+					updatedCount++;
+				}
+			}
+		}
+		LOG.info("addMissingNoPaintNeuroglancerAttributes: added attributes to {} of {} already inpainted stack(s)",
+				 updatedCount, stackIds.size());
+	}
+
+	/**
+	 * Copies the neuroglancer multiscale attributes (written by the render export's NeuroglancerAttributes) from the
+	 * pixel group to the no paint group, and each pixel level's {@code transform} to the matching no paint level,
+	 * so the no paint group opens in neuroglancer as a multiscale volume aligned with the pixel group.
+	 * The no paint levels mirror the pixel levels, so the copied {@code scales} match them.
+	 */
+	private static void copyNeuroglancerAttributes(final N5Writer n5,
+												   final String pixelGroup,
+												   final String noPaintGroup) {
+
+		final Map<String, Object> groupAttributes = new LinkedHashMap<>();
+		for (final String key : NEUROGLANCER_GROUP_ATTRIBUTE_KEYS) {
+			final JsonElement value = n5.getAttribute(pixelGroup, key, JsonElement.class);
+			if (value != null) {
+				groupAttributes.put(key, value);
+			}
+		}
+		if (groupAttributes.isEmpty()) {
+			LOG.warn("copyNeuroglancerAttributes: {} has no neuroglancer attributes to copy", pixelGroup);
+			return;
+		}
+		n5.setAttributes(noPaintGroup, groupAttributes);
+
+		int levelCount = 0;
+		for (int scale = 0; ; scale++) {
+			final String noPaintLevel = noPaintGroup + "/s" + scale;
+			if (! n5.datasetExists(noPaintLevel)) {
+				break;
+			}
+			final JsonElement transform = n5.getAttribute(pixelGroup + "/s" + scale, "transform", JsonElement.class);
+			if (transform != null) {
+				n5.setAttribute(noPaintLevel, "transform", transform);
+			}
+			levelCount++;
+		}
+
+		LOG.info("copyNeuroglancerAttributes: copied {} and {} level transform(s) from {} to {}",
+				 groupAttributes.keySet(), levelCount, pixelGroup, noPaintGroup);
 	}
 
 	/**
