@@ -2,15 +2,18 @@ package org.janelia.render.client.spark.multisem;
 
 
 import com.beust.jcommander.ParametersDelegate;
+import com.google.gson.JsonElement;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -115,6 +118,17 @@ public class Wafer6061Inpainter
 
 	/** Pixel group attribute written when a stack's inpainting completes (its presence makes reruns skip the stack). */
 	public static final String INPAINT_ATTRIBUTE = "inpaint";
+
+	/**
+	 * Maximum number of inpainted locations saved in the {@value #INPAINT_ATTRIBUTE} attribute. Each location is
+	 * about 100 bytes of json (plus about 10 per additional merged block), so this keeps the pixel group's
+	 * attributes.json (read by neuroglancer and every n5 reader) under about 100 KB. Every location is still logged.
+	 */
+	private static final int MAX_RECORDED_LOCATIONS = 1000;
+
+	/** Multiscale group attributes written by the render export (see NeuroglancerAttributes.write). */
+	private static final List<String> NEUROGLANCER_GROUP_ATTRIBUTE_KEYS =
+			List.of("axes", "ordering", "units", "scales", "pixelResolution", "translate");
 
 	private static final Logger LOG = LoggerFactory.getLogger(Wafer6061Inpainter.class);
 
@@ -227,9 +241,17 @@ public class Wafer6061Inpainter
 					 stackId.toDevString(), inpaint.getPixelDataset(stackId), INPAINT_ATTRIBUTE);
 		}
 
+		if ((! inpaint.dryRun) && (! completedStacks.isEmpty())) {
+			addMissingNoPaintNeuroglancerAttributes(inpaint, completedStacks);
+		}
+
 		if (stacksToInpaint.isEmpty()) {
 			LOG.info("inpaintStacks: exit, all {} stack(s) were already inpainted", stackIds.size());
 			return;
+		}
+
+		if (! inpaint.dryRun) {
+			createNoPaintDatasets(inpaint, stacksToInpaint);
 		}
 
 		LOG.info("inpaintStacks: distributing inpainting of {} stack(s) with parallelism {} (defaultParallelism={}), " +
@@ -313,13 +335,14 @@ public class Wafer6061Inpainter
 			throws IOException {
 
 		final String stack = stackId.getStack();
+		final String stackDevString = stackId.toDevString();
 		final long serial = inferSerial(stack);
 		final String pixelGroup = inpaint.getPixelDataset(stackId);
 		final String noPaintGroup = inpaint.getNoPaintDataset(stackId);
 		final String maskDataset = inpaint.getMaskS0Dataset(stackId);
 
-		LOG.info("inpaintStack: entry, stack={}, serial={}, pixelGroup={}, maskDataset={}, noPaintGroup={}",
-				 stackId.toDevString(), serial, pixelGroup, maskDataset, noPaintGroup);
+		LOG.info("inpaintStack: entry, {}, serial={}, pixelGroup={}, maskDataset={}, noPaintGroup={}",
+				 stackDevString, serial, pixelGroup, maskDataset, noPaintGroup);
 
 		// Read the tissue level metadata and the world->voxel offset, and discover the pyramid levels.
 		final double[] worldToVoxel;
@@ -354,36 +377,28 @@ public class Wafer6061Inpainter
 				downsampleFactors = readDownsamplingFactors(n5, pixelGroup, 3);
 			}
 		}
-		LOG.info("inpaintStack: world->voxel translate={}, pyramid levels={}, downsampleFactors={}",
-				 Arrays.toString(worldToVoxel), levels, Arrays.toString(downsampleFactors));
+		LOG.info("inpaintStack: {}, world->voxel translate={}, pyramid levels={}, downsampleFactors={}",
+				 stackDevString, Arrays.toString(worldToVoxel), levels, Arrays.toString(downsampleFactors));
 
 		// Load the (small) ROI point cloud: positions from the render stack, distances from the xlog.
 		final RenderDataClient renderClient = new RenderDataClient(baseDataUrl, stackId.getOwner(), stackId.getProject());
 		final PointCloud cloud = loadPointCloud(inpaint.xlogPath, serial, pixelGroup, renderClient, stack, worldToVoxel);
-		LOG.info("inpaintStack: loaded {} ROI reference points for serial {} from {}",
-				 cloud.size(), serial, stackId.toDevString());
+		LOG.info("inpaintStack: {}, loaded {} ROI reference points for serial {} from {}",
+				 stackDevString, cloud.size(), serial, stackId.toDevString());
 
-		// Create the no paint datasets for every level that might receive a saved original.
-		if (! inpaint.dryRun) {
-			try (final N5Writer n5 = openN5Writer(inpaint.n5Path)) {
-				for (final String levelDataset : levels) {
-					final String noPaintDataset = toNoPaintDataset(levelDataset, pixelGroup, noPaintGroup);
-					if (! n5.datasetExists(noPaintDataset)) {
-						n5.createDataset(noPaintDataset, levelAttributes.get(levelDataset));
-					}
-				}
-			}
-		}
+		// The no paint datasets for every level were already created on the driver (see createNoPaintDatasets).
 
 		final String s0Dataset = levels.getFirst();
-		final List<long[]> modifiedS0 = inpaintS0Blocks(stack,
+		final S0InpaintOutcome outcome = inpaintS0Blocks(stack,
 														serial,
 														inpaint,
 														s0Dataset,
 														levelAttributes.get(s0Dataset),
 														maskDataset,
 														toNoPaintDataset(s0Dataset, pixelGroup, noPaintGroup),
-														cloud);
+														cloud,
+														worldToVoxel);
+		final List<long[]> modifiedS0 = outcome.blocks;
 
 		if ((! inpaint.dryRun) && (! modifiedS0.isEmpty()) && (levels.size() > 1)) {
 			updatePyramid(inpaint.n5Path, pixelGroup, noPaintGroup, levels, levelAttributes, modifiedS0,
@@ -391,16 +406,29 @@ public class Wafer6061Inpainter
 		}
 
 		if (! inpaint.dryRun) {
+			// a hole that crosses block boundaries is logged once per block but recorded as one location
+			final List<InpaintedLocation> inpaintedLocations = InpaintedLocation.mergeAdjacentLocations(outcome.locations);
+			LOG.info("inpaintStack: {}, merged {} per-block inpainted location(s) into {} location(s)",
+					 stackDevString, outcome.locations.size(), inpaintedLocations.size());
+
+			// most changed pixels first, so a truncated list still has the largest inpainted areas
+			inpaintedLocations.sort(InpaintedLocation.MOST_CHANGED_PIXELS_FIRST);
+
+			if (inpaintedLocations.size() > MAX_RECORDED_LOCATIONS) {
+				LOG.warn("inpaintStack: {}, only saving the {} largest of {} inpainted locations in the {} attribute " +
+						 "(see the inpaintedLocation log lines for all of them)",
+						 stackDevString, MAX_RECORDED_LOCATIONS, inpaintedLocations.size(), INPAINT_ATTRIBUTE);
+			}
 			try (final N5Writer n5 = openN5Writer(inpaint.n5Path)) {
 				n5.setAttribute(pixelGroup,
 								INPAINT_ATTRIBUTE,
-								new InpaintRecord(inpaint, noPaintGroup, modifiedS0.size()));
+								new InpaintRecord(inpaint, noPaintGroup, modifiedS0.size(), inpaintedLocations));
 			}
 		}
 
-		final String summary = stackId.toDevString() + ": " + modifiedS0.size() + " s0 block(s) " +
+		final String summary = stackDevString + ": " + modifiedS0.size() + " s0 block(s) " +
 							   (inpaint.dryRun ? "would be inpainted (dry run)" : "inpainted");
-		LOG.info("inpaintStack: exit, {}", summary);
+		LOG.info("inpaintStack: exit {}", summary);
 		return summary;
 	}
 
@@ -460,8 +488,8 @@ public class Wafer6061Inpainter
 					distBySfovMfov[s][m] = dra.setPositionAndGet(pos).get();
 				}
 			}
-			LOG.info("loadPointCloud: serial {} -> slab position {}, distance_roi grid is {} sfov x {} mfov",
-					 serial, slabPosition, nSfov, nMfov);
+			LOG.info("loadPointCloud: stack {}, serial {} -> slab position {}, distance_roi grid is {} sfov x {} mfov",
+					 stack, serial, slabPosition, nSfov, nMfov);
 		}
 		final int nSfov = distBySfovMfov.length;
 		final int nMfov = nSfov > 0 ? distBySfovMfov[0].length : 0;
@@ -520,8 +548,8 @@ public class Wafer6061Inpainter
 											   " could be matched to a finite xlog distance_roi (fetched " + tiles.size() +
 											   " tiles; " + noDistance + " had NaN distance, " + outOfRange + " had out-of-range mfov/sfov)");
 		}
-		LOG.info("loadPointCloud: matched {} of {} render tiles (z {}) to distance_roi; dropped {} NaN-distance, {} out-of-range; world->voxel offset ({}, {})",
-				 xs.size(), tiles.size(), firstZ, noDistance, outOfRange, offsetX, offsetY);
+		LOG.info("loadPointCloud: stack {}, matched {} of {} render tiles (z {}) to distance_roi; dropped {} NaN-distance, {} out-of-range; world->voxel offset ({}, {})",
+				 stack, xs.size(), tiles.size(), firstZ, noDistance, outOfRange, offsetX, offsetY);
 		return new PointCloud(toArray(xs), toArray(ys), toArray(ds));
 	}
 
@@ -576,16 +604,17 @@ public class Wafer6061Inpainter
 	 * Filters and inpaints every s0 block of one stack's export, saving the original version of each changed block
 	 * to the no paint dataset the first time it changes.
 	 *
-	 * @return grid positions of the s0 blocks that were (or in a dry run would be) inpainted.
+	 * @return the s0 blocks that were (or in a dry run would be) inpainted and the inpainted locations within them.
 	 */
-	private static List<long[]> inpaintS0Blocks(final String stack,
+	private static S0InpaintOutcome inpaintS0Blocks(final String stack,
 												final long serial,
 												final InpaintParameters inpaint,
 												final String s0Dataset,
 												final DatasetAttributes s0Attributes,
 												final String maskDataset,
 												final String noPaintS0Dataset,
-												final PointCloud cloud) {
+												final PointCloud cloud,
+												final double[] worldToVoxel) {
 
 		final List<Grid.Block> s0Blocks = Grid.create(s0Attributes.getDimensions(), s0Attributes.getBlockSize());
 
@@ -597,7 +626,7 @@ public class Wafer6061Inpainter
 				 stack, serial, inpaint.maxRoiDistance,
 				 (dims[0] + blockSize[0] - 1) / blockSize[0], (dims[1] + blockSize[1] - 1) / blockSize[1], dims[2]);
 
-		final List<long[]> modified = new ArrayList<>();
+		final S0InpaintOutcome outcome = new S0InpaintOutcome();
 		final KNearestNeighborSearchOnKDTree<DoubleType> search = cloud.buildSearch();
 
 		try (final N5Reader reader = openN5Reader(inpaint.n5Path);
@@ -662,7 +691,7 @@ public class Wafer6061Inpainter
 					continue;
 				}
 
-				modified.add(block.gridPosition);
+				outcome.blocks.add(block.gridPosition);
 				if (writer != null) {
 					if (savedOriginal == null) {
 						writer.writeBlock(noPaintS0Dataset, s0Attributes, currentBlock);
@@ -670,13 +699,20 @@ public class Wafer6061Inpainter
 					N5Utils.saveBlock(result.inpainted, writer, s0Dataset, s0Attributes, block.gridPosition);
 				}
 				logDecision(stack, gridX, gridY, "inpainted", result.minChangedLayer, roiDistance);
+				for (int z = 0; z < result.layerChangedPixels.length; z++) {
+					if (result.layerChangedPixels[z] > 0) {
+						final InpaintedLocation location = new InpaintedLocation(block, result, z);
+						outcome.locations.add(location);
+						logInpaintedLocation(stack, location, worldToVoxel);
+					}
+				}
 			}
-			LOG.info("inpaintS0Blocks: summary for {}: considered={}, nearRoi(<{}um)={}, present={}, inpainted={} (previously inpainted={})",
-					 stack, s0Blocks.size(), inpaint.maxRoiDistance, nearRoi, present, modified.size(),
-					 previouslyInpainted);
+			LOG.info("inpaintS0Blocks: summary for {}: considered={}, nearRoi(<{}um)={}, present={}, inpainted={} with {} inpainted location(s) (previously inpainted={})",
+					 stack, s0Blocks.size(), inpaint.maxRoiDistance, nearRoi, present, outcome.blocks.size(),
+					 outcome.locations.size(), previouslyInpainted);
 		}
 
-		return modified;
+		return outcome;
 	}
 
 	/**
@@ -688,6 +724,47 @@ public class Wafer6061Inpainter
 									final int minLayer, final double roiDistance) {
 		LOG.info("blockDecision stack={} gridX={} gridY={} decision={} minLayer={} roiDistance={}",
 				 stack, gridX, gridY, decision, minLayer, roiDistance);
+	}
+
+	/**
+	 * Logs one greppable {@code inpaintedLocation ...} line with where an inpainted block's changed pixels are, so
+	 * they can be reviewed in neuroglancer. Coordinates are given both as s0 voxels (the export's index space) and
+	 * as render world pixels (voxel + the group's neuroglancer {@code translate}). The world values are "n/a" when
+	 * the group has no translate. In a dry run the location is where the block would be inpainted.
+	 */
+	private static void logInpaintedLocation(final String stack,
+											 final InpaintedLocation location,
+											 final double[] worldToVoxel) {
+		LOG.info("inpaintedLocation stack={} voxelMin={} voxelMax={} worldMin={} worldMax={} changedPixels={} block={}",
+				 stack,
+				 formatXyz(location.voxelMin),
+				 formatXyz(location.voxelMax),
+				 formatWorldXyz(location.voxelMin, worldToVoxel),
+				 formatWorldXyz(location.voxelMax, worldToVoxel),
+				 location.changedPixels,
+				 formatXyz(location.blocks.getFirst()));
+	}
+
+	/** Formats a voxel position as {@code (x,y,z)}. */
+	private static String formatXyz(final long[] xyz) {
+		return "(" + xyz[0] + "," + xyz[1] + "," + xyz[2] + ")";
+	}
+
+	/**
+	 * Formats a voxel position as world {@code (x,y,z)} (rounded to whole pixels) by adding the specified translate.
+	 * A translate with only x and y leaves z as the voxel z. Returns "n/a" when there is no translate.
+	 */
+	private static String formatWorldXyz(final long[] voxel,
+										 final double[] worldToVoxel) {
+		if (worldToVoxel == null) {
+			return "n/a";
+		}
+		final long[] world = new long[3];
+		for (int d = 0; d < 3; d++) {
+			final double offset = d < worldToVoxel.length ? worldToVoxel[d] : 0.0;
+			world[d] = Math.round(voxel[d] + offset);
+		}
+		return formatXyz(world);
 	}
 
 	/**
@@ -719,8 +796,14 @@ public class Wafer6061Inpainter
 		final Img<UnsignedByteType> inpainted = ArrayImgs.unsignedBytes(blockDimensions);
 		final Cursor<UnsignedByteType> cursor = inpainted.localizingCursor();
 		final long[] local = new long[3];
-		boolean changed = false;
-		int minChangedLayer = Integer.MAX_VALUE;
+		final int depth = (int) blockDimensions[2];
+		final long[] layerChangedPixels = new long[depth];
+		final long[][] layerMinXY = new long[depth][2];
+		final long[][] layerMaxXY = new long[depth][2];
+		for (int z = 0; z < depth; z++) {
+			Arrays.fill(layerMinXY[z], Long.MAX_VALUE);
+			Arrays.fill(layerMaxXY[z], Long.MIN_VALUE);
+		}
 		while (cursor.hasNext()) {
 			final UnsignedByteType target = cursor.next();
 			cursor.localize(local);
@@ -731,17 +814,20 @@ public class Wafer6061Inpainter
 				value = original;
 			} else {
 				value = zAverage(tissueAccess, local, 0, zMax);
+				// zAverage moves local[2] while reading neighbors but restores it before returning
 				if (value != original) {
-					changed = true;
-					if (local[2] < minChangedLayer) {
-						minChangedLayer = (int) local[2];
+					final int z = (int) local[2];
+					layerChangedPixels[z]++;
+					for (int d = 0; d < 2; d++) {
+						layerMinXY[z][d] = Math.min(layerMinXY[z][d], local[d]);
+						layerMaxXY[z][d] = Math.max(layerMaxXY[z][d], local[d]);
 					}
 				}
 			}
 			target.set(value);
 		}
 
-		return new InpaintResult(inpainted, changed, changed ? minChangedLayer : -1);
+		return new InpaintResult(inpainted, layerChangedPixels, layerMinXY, layerMaxXY);
 	}
 
 	/** Average of the tissue in the z-1 and z+1 sections, copying the single neighbor at the volume z-boundary. */
@@ -874,6 +960,155 @@ public class Wafer6061Inpainter
 										   "' because it does not start with w<wafer>_s<serial>_");
 	}
 
+	/**
+	 * Creates the no paint dataset for every pyramid level of every specified stack, one dataset at a time on the
+	 * driver, so that the executors only write blocks into existing datasets.
+	 * <p>
+	 * On GCS, {@code createDataset} writes a directory marker object for every component of the dataset's path, so
+	 * shared ancestors like the export root are rewritten for each dataset. When every Spark task created its own
+	 * datasets at the same time, those rewrites exceeded GCS's per-object mutation rate limit (about one per second)
+	 * and the 429 responses were not retried by the GCS client. Creating them serially and retrying rate limited
+	 * creates with backoff avoids that.
+	 */
+	private static void createNoPaintDatasets(final InpaintParameters inpaint,
+											  final List<StackId> stackIds)
+			throws IOException {
+
+		LOG.info("createNoPaintDatasets: entry, creating no paint datasets for {} stack(s)", stackIds.size());
+
+		int createdCount = 0;
+		int existingCount = 0;
+		try (final N5Writer n5 = openN5Writer(inpaint.n5Path)) {
+			for (final StackId stackId : stackIds) {
+				final String pixelGroup = inpaint.getPixelDataset(stackId);
+				final String noPaintGroup = inpaint.getNoPaintDataset(stackId);
+				for (int scale = 0; ; scale++) {
+					final String levelDataset = pixelGroup + "/s" + scale;
+					if (! n5.datasetExists(levelDataset)) {
+						break;
+					}
+					final String noPaintDataset = toNoPaintDataset(levelDataset, pixelGroup, noPaintGroup);
+					if (n5.datasetExists(noPaintDataset)) {
+						existingCount++;
+						LOG.info("createNoPaintDatasets: {} already exists", noPaintDataset);
+					} else {
+						final DatasetAttributes attributes = n5.getDatasetAttributes(levelDataset);
+						createWithRateLimitRetries(() -> n5.createDataset(noPaintDataset, attributes), noPaintDataset);
+						createdCount++;
+						LOG.info("createNoPaintDatasets: created {}", noPaintDataset);
+					}
+				}
+				copyNeuroglancerAttributes(n5, pixelGroup, noPaintGroup);
+			}
+		}
+
+		LOG.info("createNoPaintDatasets: exit, created {} and found {} existing no paint dataset(s)",
+				 createdCount, existingCount);
+	}
+
+	/**
+	 * Adds the neuroglancer multiscale attributes to the no paint groups of already inpainted stacks that were
+	 * inpainted before {@link #createNoPaintDatasets} copied them, so those groups also open as multiscale volumes.
+	 * Stacks without a no paint group, or whose no paint group already has the attributes, are left alone.
+	 */
+	private static void addMissingNoPaintNeuroglancerAttributes(final InpaintParameters inpaint,
+																final List<StackId> stackIds) {
+		int updatedCount = 0;
+		try (final N5Writer n5 = openN5Writer(inpaint.n5Path)) {
+			for (final StackId stackId : stackIds) {
+				final String noPaintGroup = inpaint.getNoPaintDataset(stackId);
+				if (n5.exists(noPaintGroup) && (n5.getAttribute(noPaintGroup, "scales", JsonElement.class) == null)) {
+					copyNeuroglancerAttributes(n5, inpaint.getPixelDataset(stackId), noPaintGroup);
+					updatedCount++;
+				}
+			}
+		}
+		LOG.info("addMissingNoPaintNeuroglancerAttributes: added attributes to {} of {} already inpainted stack(s)",
+				 updatedCount, stackIds.size());
+	}
+
+	/**
+	 * Copies the neuroglancer multiscale attributes (written by the render export's NeuroglancerAttributes) from the
+	 * pixel group to the no paint group, and each pixel level's {@code transform} to the matching no paint level,
+	 * so the no paint group opens in neuroglancer as a multiscale volume aligned with the pixel group.
+	 * The no paint levels mirror the pixel levels, so the copied {@code scales} match them.
+	 */
+	private static void copyNeuroglancerAttributes(final N5Writer n5,
+												   final String pixelGroup,
+												   final String noPaintGroup) {
+
+		final Map<String, Object> groupAttributes = new LinkedHashMap<>();
+		for (final String key : NEUROGLANCER_GROUP_ATTRIBUTE_KEYS) {
+			final JsonElement value = n5.getAttribute(pixelGroup, key, JsonElement.class);
+			if (value != null) {
+				groupAttributes.put(key, value);
+			}
+		}
+		if (groupAttributes.isEmpty()) {
+			LOG.warn("copyNeuroglancerAttributes: {} has no neuroglancer attributes to copy", pixelGroup);
+			return;
+		}
+		n5.setAttributes(noPaintGroup, groupAttributes);
+
+		int levelCount = 0;
+		for (int scale = 0; ; scale++) {
+			final String noPaintLevel = noPaintGroup + "/s" + scale;
+			if (! n5.datasetExists(noPaintLevel)) {
+				break;
+			}
+			final JsonElement transform = n5.getAttribute(pixelGroup + "/s" + scale, "transform", JsonElement.class);
+			if (transform != null) {
+				n5.setAttribute(noPaintLevel, "transform", transform);
+			}
+			levelCount++;
+		}
+
+		LOG.info("copyNeuroglancerAttributes: copied {} and {} level transform(s) from {} to {}",
+				 groupAttributes.keySet(), levelCount, pixelGroup, noPaintGroup);
+	}
+
+	/**
+	 * Runs the specified create, retrying with exponential backoff (2s, 4s, ... up to 64s, about 4 minutes in
+	 * total) while it fails because of a GCS rate limit. Any other failure is thrown immediately.
+	 */
+	private static void createWithRateLimitRetries(final Runnable create,
+												   final String path)
+			throws IOException {
+		final int maxRetries = 7;
+		long delayMs = 2000;
+		for (int retry = 0; ; retry++) {
+			try {
+				create.run();
+				return;
+			} catch (final RuntimeException e) {
+				if ((retry >= maxRetries) || (! isRateLimitError(e))) {
+					throw e;
+				}
+				LOG.warn("createWithRateLimitRetries: rate limited creating {}, retry {} of {} in {}ms",
+						 path, retry + 1, maxRetries, delayMs);
+				try {
+					Thread.sleep(delayMs);
+				} catch (final InterruptedException ie) {
+					Thread.currentThread().interrupt();
+					throw new IOException("interrupted while waiting to retry create of " + path, ie);
+				}
+				delayMs *= 2;
+			}
+		}
+	}
+
+	/** Returns true if the specified exception or any of its causes is a GCS 429 rate limit error. */
+	private static boolean isRateLimitError(final Throwable throwable) {
+		for (Throwable t = throwable; t != null; t = t.getCause()) {
+			final String message = t.getMessage();
+			if ((message != null) &&
+				(message.contains("429") || message.contains("rateLimitExceeded") || message.contains("rate limit"))) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** Maps a pixel level dataset (e.g. {@code <pixelGroup>/s2}) to its no paint dataset ({@code <noPaintGroup>/s2}). */
 	private static String toNoPaintDataset(final String levelDataset,
 										   final String pixelGroup,
@@ -996,6 +1231,13 @@ public class Wafer6061Inpainter
 		String xlogPath;
 		String noPaintDataset;
 		int inpaintedS0BlockCount;
+		// inpaintedLocationCount is the actual number of inpainted locations, while inpaintedLocations only holds the
+		// MAX_RECORDED_LOCATIONS largest of them, most changed pixels first (null in records written before locations
+		// were added), so the list is truncated when it is shorter than the count. The count and flag are declared
+		// before the list so they are written before it, where they are easy to see.
+		int inpaintedLocationCount;
+		boolean inpaintedLocationsTruncated;
+		List<InpaintedLocation> inpaintedLocations;
 
 		@SuppressWarnings("unused")
 		InpaintRecord() {
@@ -1003,25 +1245,204 @@ public class Wafer6061Inpainter
 
 		InpaintRecord(final InpaintParameters inpaint,
 					  final String noPaintDataset,
-					  final int inpaintedS0BlockCount) {
+					  final int inpaintedS0BlockCount,
+					  final List<InpaintedLocation> inpaintedLocations) {
 			this.completedAt = Instant.now().toString();
 			this.maxRoiDistance = inpaint.maxRoiDistance;
 			this.xlogPath = inpaint.xlogPath;
 			this.noPaintDataset = noPaintDataset;
 			this.inpaintedS0BlockCount = inpaintedS0BlockCount;
+			this.inpaintedLocationsTruncated = inpaintedLocations.size() > MAX_RECORDED_LOCATIONS;
+			this.inpaintedLocations = this.inpaintedLocationsTruncated ?
+									  new ArrayList<>(inpaintedLocations.subList(0, MAX_RECORDED_LOCATIONS)) :
+									  inpaintedLocations;
+			this.inpaintedLocationCount = inpaintedLocations.size();
 		}
 	}
 
-	/** Result of inpainting one block: the (block-sized) inpainted image and whether any pixel changed. */
+	/**
+	 * Where one layer's changed pixels are within one or more s0 blocks, in s0 voxel coordinates (add the group's
+	 * {@code translate} for render world coordinates). Saved in the {@link InpaintRecord} so
+	 * inpainted locations can be reviewed in neuroglancer.
+	 */
+	private static class InpaintedLocation {
+
+		/**
+		 * Orders locations by changed pixel count (most first), then by voxel area (largest first), then by
+		 * z, y, and x so that the order is the same on every run.
+		 */
+		static final Comparator<InpaintedLocation> MOST_CHANGED_PIXELS_FIRST =
+				Comparator.comparingLong((InpaintedLocation l) -> l.changedPixels).reversed()
+						.thenComparing(Comparator.comparingLong(InpaintedLocation::getVoxelArea).reversed())
+						.thenComparingLong(l -> l.voxelMin[2])
+						.thenComparingLong(l -> l.voxelMin[1])
+						.thenComparingLong(l -> l.voxelMin[0]);
+
+		List<long[]> blocks; // grid positions of the s0 blocks the location covers (more than one after merging)
+		long[] voxelMin;     // min x,y,z of the changed pixels (min z == max z, one layer)
+		long[] voxelMax;     // max x,y,z of the changed pixels
+		long changedPixels;
+
+		@SuppressWarnings("unused")
+		public InpaintedLocation() {
+		}
+
+		/** Location of the changed pixels in block-local layer z of the specified block. */
+		public InpaintedLocation(final Grid.Block block,
+								 final InpaintResult result,
+								 final int z) {
+			this.blocks = new ArrayList<>();
+			this.blocks.add(block.gridPosition.clone());
+			this.voxelMin = new long[3];
+			this.voxelMax = new long[3];
+			for (int d = 0; d < 2; d++) {
+				this.voxelMin[d] = block.offset[d] + result.layerMinXY[z][d];
+				this.voxelMax[d] = block.offset[d] + result.layerMaxXY[z][d];
+			}
+			final long voxelZ = block.offset[2] + z;
+			this.voxelMin[2] = voxelZ;
+			this.voxelMax[2] = voxelZ;
+			this.changedPixels = result.layerChangedPixels[z];
+		}
+
+		/** Copy constructor (the merge grows copies so the per-block locations are left unchanged). */
+		public InpaintedLocation(final InpaintedLocation other) {
+			this.blocks = new ArrayList<>(other.blocks);
+			this.voxelMin = other.voxelMin.clone();
+			this.voxelMax = other.voxelMax.clone();
+			this.changedPixels = other.changedPixels;
+		}
+
+		/**
+		 * @return true if this location and the other are in the same layer and their x,y boxes overlap or touch
+		 *         (including diagonally), e.g. the two halves of one hole that crosses a block boundary.
+		 */
+		public boolean isAdjacentTo(final InpaintedLocation other) {
+			if (voxelMin[2] != other.voxelMin[2]) {
+				return false;
+			}
+			for (int d = 0; d < 2; d++) {
+				if ((voxelMin[d] > other.voxelMax[d] + 1) || (other.voxelMin[d] > voxelMax[d] + 1)) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		/** @return number of voxels in this location's x,y box (it is always one layer deep). */
+		long getVoxelArea() {
+			return (voxelMax[0] - voxelMin[0] + 1) * (voxelMax[1] - voxelMin[1] + 1);
+		}
+
+		/** Grows this location to also cover the other one. */
+		public void add(final InpaintedLocation other) {
+			blocks.addAll(other.blocks);
+			for (int d = 0; d < 2; d++) {
+				voxelMin[d] = Math.min(voxelMin[d], other.voxelMin[d]);
+				voxelMax[d] = Math.max(voxelMax[d], other.voxelMax[d]);
+			}
+			changedPixels += other.changedPixels;
+		}
+
+		/**
+		 * Merges each group of adjacent same-layer locations (see {@link #isAdjacentTo}) into a single location, so that
+		 * a hole crossing block boundaries is recorded once. Adjacency is transitive: a chain of touching per-block
+		 * locations becomes one location, but two locations are not merged just because the merged box of others grew
+		 * to reach them. Each layer's locations are compared pairwise, which is cheap for the small number of inpainted
+		 * locations expected per layer. The specified locations are not changed.
+		 *
+		 * @return the merged locations ordered by z, then by the order of their first per-block location.
+		 */
+		public static List<InpaintedLocation> mergeAdjacentLocations(final List<InpaintedLocation> locations) {
+
+			final Map<Long, List<InpaintedLocation>> zToLocations = new TreeMap<>();
+			for (final InpaintedLocation location : locations) {
+				zToLocations.computeIfAbsent(location.voxelMin[2], z -> new ArrayList<>()).add(location);
+			}
+
+			final List<InpaintedLocation> mergedLocations = new ArrayList<>();
+			for (final List<InpaintedLocation> layerLocations : zToLocations.values()) {
+
+				// union-find over the layer's per-block locations
+				final int n = layerLocations.size();
+				final int[] parent = new int[n];
+				for (int i = 0; i < n; i++) {
+					parent[i] = i;
+				}
+				for (int i = 0; i < n; i++) {
+					for (int j = i + 1; j < n; j++) {
+						if (layerLocations.get(i).isAdjacentTo(layerLocations.get(j))) {
+							final int rootI = findRoot(parent, i);
+							final int rootJ = findRoot(parent, j);
+							if (rootI != rootJ) {
+								parent[Math.max(rootI, rootJ)] = Math.min(rootI, rootJ);
+							}
+						}
+					}
+				}
+
+				// roots are always the smallest index in their group, so each group starts at its root
+				final Map<Integer, InpaintedLocation> rootToMerged = new LinkedHashMap<>();
+				for (int i = 0; i < n; i++) {
+					final int root = findRoot(parent, i);
+					final InpaintedLocation merged = rootToMerged.get(root);
+					if (merged == null) {
+						rootToMerged.put(root, new InpaintedLocation(layerLocations.get(i)));
+					} else {
+						merged.add(layerLocations.get(i));
+					}
+				}
+				mergedLocations.addAll(rootToMerged.values());
+			}
+
+			return mergedLocations;
+		}
+
+		private static int findRoot(final int[] parent,
+									final int index) {
+			int root = index;
+			while (parent[root] != root) {
+				root = parent[root];
+			}
+			return root;
+		}
+	}
+
+	/** The s0 blocks that were (or in a dry run would be) inpainted, and the inpainted locations within them. */
+	private static class S0InpaintOutcome {
+		final List<long[]> blocks = new ArrayList<>();         // grid positions of the inpainted blocks
+		final List<InpaintedLocation> locations = new ArrayList<>(); // one per changed layer of each inpainted block
+	}
+
+	/**
+	 * Result of inpainting one block: the (block-sized) inpainted image, whether any pixel changed, and for each
+	 * block-local z layer the count and x,y bounding box of the changed pixels in that layer.
+	 */
 	static class InpaintResult {
 		final Img<UnsignedByteType> inpainted;
 		final boolean changed;
 		final int minChangedLayer; // minimal z-layer with an inpainted (changed) pixel, or -1 when nothing changed
+		final long[] layerChangedPixels; // [z] number of changed pixels in block-local layer z
+		final long[][] layerMinXY;       // [z][x|y] min x,y of the changed pixels in layer z (unset when count is 0)
+		final long[][] layerMaxXY;       // [z][x|y] max x,y of the changed pixels in layer z (unset when count is 0)
 
-		InpaintResult(final Img<UnsignedByteType> inpainted, final boolean changed, final int minChangedLayer) {
+		InpaintResult(final Img<UnsignedByteType> inpainted,
+					  final long[] layerChangedPixels,
+					  final long[][] layerMinXY,
+					  final long[][] layerMaxXY) {
 			this.inpainted = inpainted;
-			this.changed = changed;
-			this.minChangedLayer = minChangedLayer;
+			this.layerChangedPixels = layerChangedPixels;
+			this.layerMinXY = layerMinXY;
+			this.layerMaxXY = layerMaxXY;
+			int firstChangedLayer = -1;
+			for (int z = 0; z < layerChangedPixels.length; z++) {
+				if (layerChangedPixels[z] > 0) {
+					firstChangedLayer = z;
+					break;
+				}
+			}
+			this.minChangedLayer = firstChangedLayer;
+			this.changed = firstChangedLayer >= 0;
 		}
 	}
 
